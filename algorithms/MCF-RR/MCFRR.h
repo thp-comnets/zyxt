@@ -1,5 +1,5 @@
 //
-// Created by cuda on 3/26/18.
+// Created by cuda on 4/24/18.
 //
 #include "ortools/base/commandlineflags.h"
 #include "ortools/base/logging.h"
@@ -13,15 +13,17 @@
 #include <climits>
 #include <cfloat>
 #include <fstream>
-#ifndef MCF_MCF_H
-#define MCF_MCF_H
-
+#ifndef NEWMCF_MCFRR_H
+#define NEWMCF_MCFRR_H
 
 #define EQUIPMENT_LENGTH 9
+
+
 
 using namespace std;
 using namespace operations_research;
 using json = nlohmann::json;
+
 
 struct GPSPoint{
     double lat;
@@ -61,36 +63,41 @@ struct Edge{
     }
 };
 
+
 struct Solution{
     double solutionNumber;
     double totalPinnedCost;
     double totalOriginalCost;
-    double totalEquipmentcost;
+    double totalEquipmentCost;
+    Solution(){
+        this->totalEquipmentCost = 0;
+        this->totalPinnedCost = 0;
+        this->totalOriginalCost = 0;
+        this->totalEquipmentCost = 0;
+    }
     map<string, Edge> solutionEdges;
 };
 
 typedef pair<string,Edge> stringEdgePair;
 
-class MCF {
+
+class MCFRR {
     int runIndex;
-    SimpleMinCostFlow simpleMinCostFlow;
     char *mainOutputDir;
     char *removalAlgorithm;
     char *equipmentFilePath;
-    int maximumCapacity;
-    bool applyRemoval;
     unsigned char* visibilityMatrix;
     long rows;
     long cols;
     GPSPoint* allCoordinates;
-    bool* nonRemovedPoints;
+    vector<long> networkNodes;
     json inputJson;
-    double edgeDistanceScaling;
+    int edgeDistanceScaling;
     Equipment *equipmentList;
-    map<int, int> sourceMap;
-    map<int, int> sinksMap;
+    map<long, int> sourceMap;
+    map<long, int> sinksMap;
     map<string, Edge> edgesKept;
-    vector<Solution> allSolutions;
+    Solution currentSolution;
     long totalNetworkEdges;
     double calculateDistance(GPSPoint, GPSPoint);
     Equipment getBestDevice(GPSPoint, GPSPoint, int);
@@ -98,28 +105,22 @@ class MCF {
     double deg2rad(double);
     void initializePreliminaryData();
     void writeJSONOutput(const SimpleMinCostFlow &minCostFlow, int);
-    double getEdgeCost(double);
-    double calculateEquipmentCostOnly(const SimpleMinCostFlow &minCostFlow);
+    double getEdgeUnitCost(double);
+    double calculateEquipmentCostOfNetwork(const SimpleMinCostFlow &minCostFlow);
+    long getNodeLocalIndex(long node);
     bool isEdgeWithLeafNode(string edge);
-
 public:
+    MCFRR(char *mainOutputDir, char *removalAlgorithm, char *equipmentFilePath, int edgeDistanceScaling);
     void clearMetaData();
-    void setRunIndex(int runIndex);
-
-    void setEdgesKept(const map<string, Edge> &edgesKept);
-
-    void pushSolution(Solution );
-
     const map<string, Edge> &getEdgesKept() const;
-    void furtherOptimizeMinSolution(int);
-    vector<Solution>& getAllSolutions();
-    MCF(char*, char*, char*, bool, double);
-    void populateModel(double); // first argument is visibility range, 0 for all
-    void solve();
-    int solveInIterations(int);
-    void optimizeMinSolution(int);
-    ~MCF();
+    void doFurtherOptimization(bool);
+    int solveInIterations(unsigned long);
+    void setRunIndex(int runIndex);
+    void setEdgesKept(const map<string, Edge> &edgesKept);
+    void setPreviousSolution(const Solution &previousSolution);
+    const Solution &getPreviousSolution() const;
+    virtual ~MCFRR();
 };
 
 
-#endif //MCF_MCF_H
+#endif //NEWMCF_MCFRR_H
