@@ -21,7 +21,7 @@
 > - **processMapsWithRescaling.py**  (Generally for big maps)
 - **processMapWithOriginalResolution.py**
 
-##### Parameteres required to run *processMapsWithRescaling.py*
+##### Parameteres required to run *processMapsWithProportionalReScaling.py*
 1. Customer Input File Name
 2. Source Input File Name
 3. Size, you want to rescale the input map.
@@ -34,10 +34,14 @@
 6. Solver Algorithm
 	 *fcnf* for **Fixed-Charge Network Flow**
 	 *mcf* for ** Min Cost Flow With Randomized Rounding Technique**
+7. Absolute path of directory where you download zyxt code.
+8. Mounting Height for towers
+9. Absolute path of text file containing comma seprated node pair representing pinned edges i.e already existing edges.
+10. Absolute path of selected equipment file.
 
 **Example:**
 ```bash
-python processMapsWithRescaling.py mapA_sinks.csv mapA_source.csv 400 n 0 fcnf
+python processMapsWithRescaling.py mapA_sinks.csv mapA_source.csv 400 n 0 mcf /path/of/zyxt 10 /path/of/pinnedEdges /path/of/equipmentsFile
 ```
 
 ##### Parameteres required to run *processMapWithOriginalResolution.py*
@@ -52,10 +56,14 @@ python processMapsWithRescaling.py mapA_sinks.csv mapA_source.csv 400 n 0 fcnf
 5. Solver Algorithm
 	 *fcnf* for **Fixed-Charge Network Flow**
 	 *mcf* for ** Min Cost Flow With Randomized Rounding Technique**
+6. Absolute path of directory where you download zyxt code.
+7. Mounting Height for towers
+8. Text file containing comma seprated node pair representing pinned edges i.e already existing edges.
+9. Absolute path of selected equipment file.
 
 **Example:**
 ```bash
-python processMapWithOriginalResolution.py mapA_sinks.csv mapA_source.csv c 99.95 mcf
+python processMapsWithRescaling.py mapA_sinks.csv mapA_source.csv n 0 mcf /path/of/zyxt 10 /path/of/pinnedEdges /path/of/equipmentsFile
 ```
 
 ------------
