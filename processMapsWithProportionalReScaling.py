@@ -16,6 +16,7 @@ class coordinate:
         self.demand = int(demand)
         self.revenue = 0
         self.index = 0
+        self.mountingHeight = 0
 
 
 class mapBoundary:
@@ -34,19 +35,10 @@ class metaData:
         self.nodata = int(nodata)
         self.elevationData = int(elevationData)
         self.indexMapping = []
-        self.reducedRows = 0
-        self.reducedCols = 0
-        self.smallRasterSize = 0
     def getUnitXAndY(self):
         unitX = (self.distX / self.cols) * 1000
         unitY = (self.distY / self.rows) * 1000
         return unitX, unitY
-    def getReducedUnitXAndY(self):
-        unitX = (self.distX / self.cols) * 1000
-        unitY = (self.distY / self.rows) * 1000
-        reducedUnitX = unitX * self.smallRasterSize
-        reducedUnitY = unitY * self.smallRasterSize
-        return reducedUnitX, reducedUnitY
 
 
 def incrementPointByXAndY(refCoordinate, dx, dy):
@@ -87,23 +79,22 @@ def calculateMapBoundries(inputCoordinates):
     boundingSquare.bLeft.lng = miny.lng
     boundingSquare.bRight.lat = minx.lat
     boundingSquare.bRight.lng = maxy.lng
-
-    #
-    # deltaX = calculateDistance(boundingSquare.tLeft, boundingSquare.tRight) * 0.10
-    # if deltaX == 0.0:
-    #     deltaX = 0.1
-    # deltaY = calculateDistance(boundingSquare.tLeft, boundingSquare.bLeft) * 0.10
-    # if deltaY == 0.0:
-    #     deltaY = 0.1
-    # newPointToTopLeft = incrementPointByXAndY(boundingSquare.tLeft, -deltaX, deltaY)
-    # newPointToBottomRight = incrementPointByXAndY(boundingSquare.bRight, deltaX, -deltaY)
-    # boundingSquare.tLeft = newPointToTopLeft
-    # boundingSquare.bRight = newPointToBottomRight
-    # boundingSquare.tRight.lat = newPointToTopLeft.lat
-    # boundingSquare.tRight.lng = newPointToBottomRight.lng
-    # boundingSquare.bLeft.lat = newPointToBottomRight.lat
-    # boundingSquare.bLeft.lng = newPointToTopLeft.lng
-
+    '''
+    deltaX = calculateDistance(boundingSquare.tLeft, boundingSquare.tRight) * 0.10
+    if deltaX == 0.0:
+        deltaX = 0.1
+    deltaY = calculateDistance(boundingSquare.tLeft, boundingSquare.bLeft) * 0.10
+    if deltaY == 0.0:
+        deltaY = 0.1
+    newPointToTopLeft = incrementPointByXAndY(boundingSquare.tLeft, -deltaX, deltaY)
+    newPointToBottomRight = incrementPointByXAndY(boundingSquare.bRight, deltaX, -deltaY)
+    boundingSquare.tLeft = newPointToTopLeft
+    boundingSquare.bRight = newPointToBottomRight
+    boundingSquare.tRight.lat = newPointToTopLeft.lat
+    boundingSquare.tRight.lng = newPointToBottomRight.lng
+    boundingSquare.bLeft.lat = newPointToBottomRight.lat
+    boundingSquare.bLeft.lng = newPointToTopLeft.lng
+    '''
     # print "Map Boundaries:"
     # print str(boundingSquare.tRight.lat)+","+str(boundingSquare.tRight.lng)
     # print str(boundingSquare.tLeft.lat)+","+str(boundingSquare.tLeft.lng)
@@ -115,7 +106,7 @@ def calculateMapBoundries(inputCoordinates):
 def downloadMapTiles(customerLocations, mapBoundaries):
     filenames = []
     filenamesTemp = {}
-    elevation_data = srtm.get_data(srtm1=True)
+    elevation_data = srtm.get_data(srtm3=True, srtm1=False)
     print "Downloading map tiles"
 
     for i in range(0, int(abs(math.floor(mapBoundaries.bRight.lng) - math.floor(mapBoundaries.bLeft.lng))) + 1):
@@ -127,6 +118,26 @@ def downloadMapTiles(customerLocations, mapBoundaries):
             filenamesTemp[elevation_data.get_file_name(mapBoundaries.bLeft.lat + j, mapBoundaries.bLeft.lng + i)] = 1
             # filenamesShapeTemp[elevation_data.get_swbd_file_name(mapBoundaries.bLeft.lat + j, mapBoundaries.bLeft.lng + i)] = 1
 
+    # fixme: check if BLeft < Tleft
+    # for i in range(0, int(math.ceil(abs(mapBoundaries.tRight.lng - mapBoundaries.tLeft.lng)))+1):
+    #     for j in range(0, int(math.ceil(abs(mapBoundaries.tLeft.lat - mapBoundaries.bLeft.lat)))+1):
+    #         # print mapBoundaries.tLeft.lng + i, mapBoundaries.bLeft.lat + j
+    #         elevation_data.get_elevation(mapBoundaries.bLeft.lat + j, mapBoundaries.tLeft.lng + i)
+    #         filenamesTemp[elevation_data.get_file_name(mapBoundaries.bLeft.lat + j, mapBoundaries.tLeft.lng + i)] = 1
+
+    # elevation_data.get_elevation(mapBoundaries.tRight.lat, mapBoundaries.tRight.lng)
+    # filenamesTemp[elevation_data.get_file_name(mapBoundaries.bRight.lat, mapBoundaries.bRight.lng)] = 1
+    # elevation_data.get_elevation(mapBoundaries.tLeft.lat,  mapBoundaries.tLeft.lng)
+    # filenamesTemp[(elevation_data.get_file_name(mapBoundaries.tLeft.lat,  mapBoundaries.tLeft.lng))] = 1
+    # elevation_data.get_elevation(mapBoundaries.bLeft.lat,  mapBoundaries.bLeft.lng)
+    # filenamesTemp[(elevation_data.get_file_name(mapBoundaries.bLeft.lat,  mapBoundaries.bLeft.lng))] = 1
+    # elevation_data.get_elevation(mapBoundaries.bRight.lat, mapBoundaries.bRight.lng)
+    # filenamesTemp[(elevation_data.get_file_name(mapBoundaries.bRight.lat, mapBoundaries.bRight.lng))] = 1
+
+    # for coords in customerLocations:
+    #     elevation_data.get_elevation(coords.lat, coords.lng)
+    #     filenamesTemp[(elevation_data.get_file_name(coords.lat, coords.lng))] = 1
+
     for file in filenamesTemp:
         if file is not None:
             filenames.append(file.split(".")[0])
@@ -135,6 +146,7 @@ def downloadMapTiles(customerLocations, mapBoundaries):
 
 def createGlobalMap(gscript, outputDir, fileNames, customerLocationsFile, mapBoundaries, scaling, mapMetaData):
     print "Importing srtm files"
+
     for file in tqdm(fileNames):
         if file is not None:
             gscript.run_command('r.in.srtm', quiet=QUIET, flags="1", overwrite=True, input=os.path.join(tempDirForMapTiles, file))
@@ -153,15 +165,41 @@ def createGlobalMap(gscript, outputDir, fileNames, customerLocationsFile, mapBou
     east = mapBoundaries.tRight.lng
     west = mapBoundaries.bLeft.lng
 
+    print north, south, east, west
+    print "Applying boundaries"
+    gscript.run_command('g.region', flags='a', n=north, s=south, e=east, w=west)
+
     xDim = calculateDistance(mapBoundaries.tLeft, mapBoundaries.tRight)
     yDim = calculateDistance(mapBoundaries.tLeft, mapBoundaries.bLeft)
     mapMetaData.distX = xDim
     mapMetaData.distY = yDim
-    print str(xDim) + ", " + str(yDim)
 
-    print north, south, east, west
-    print "Applying boundaries"
-    gscript.run_command('g.region', flags='a', n=north, s=south, e=east, w=west)
+    print "Exporting the resampled map to", outputDir + '/original_out.asc'
+    gscript.run_command('r.out.gdal', quiet=QUIET, overwrite=True, input='patched', output=outputDir + '/original_out.asc', format='AAIGrid')
+
+    with open(outputDir + '/original_out.asc', 'r') as e:
+        cols = float(e.readline().strip().split()[1])
+        rows = float(e.readline().strip().split()[1])
+        e.readline()
+        e.readline()
+        dx = float(e.readline().strip().split()[1])
+        dy = float(e.readline().strip().split()[1])
+    e.close()
+
+    scaling_new = scaling#int((cols * rows) * ((100 - scaling) / 100.0))
+    aspectRatio = (float)(cols / rows)
+    smallCols = aspectRatio
+    smallRows = 1
+    incrementalDelta = 1
+    while (smallCols * smallRows) <= scaling_new:
+        smallCols = incrementalDelta * aspectRatio
+        smallRows = incrementalDelta * 1
+        incrementalDelta += 1
+    smallCols = int(smallCols)
+    smallRows = int(smallRows)
+
+    print "Resampling"
+    gscript.run_command('g.region', flags='a', rows=smallRows, cols=smallCols)
 
     if customerLocationsFile != "":
         gscript.run_command('v.in.ascii', input=customerLocationsFile, output='sinks', separator='comma', x=2, y=1)
@@ -178,9 +216,11 @@ def createGlobalMap(gscript, outputDir, fileNames, customerLocationsFile, mapBou
     print "Exporting the resampled map to", outputDir + '/out.asc'
     gscript.run_command('r.out.gdal', quiet=QUIET, overwrite=True, input='patched', output=outputDir + '/out.asc', format='AAIGrid')
 
+
     return outputDir + '/out.asc'
 
-def getMetaData(mapMetaData, outputDir):
+
+def getMetaData(mapFile, mapMetaData, outputDir):
 
     with open(outputDir + "/out.asc", 'r') as e:
         mapMetaData.cols = int(e.readline().strip().split()[1])
@@ -199,7 +239,6 @@ def getMetaData(mapMetaData, outputDir):
         for line in e:
             matrix.append(map(int, line.strip().split(" ")))
         mapMetaData.elevationData = matrix #mistake (previously: data.matrix (matrix is not the member of class metaData)) confirmation required
-    e.close()
     with open(outputDir + '/index_mapping.txt', 'r') as indexMappingFile:
         for mapping in indexMappingFile:
             coordsWithIndex = mapping.split('|')
@@ -209,12 +248,11 @@ def getMetaData(mapMetaData, outputDir):
     indexMappingFile.close()
     return mapMetaData
 
-
 def calculateViewsheds(mapFile, mapMetaData, towerHeight, outputDir, absolutePath):
 
     print 'Starting CUDA'
     print "thp: double check the metaData"
-    startcmd = absolutePath + '/algorithms/CUDA/main '+mapFile + " " + str(mapMetaData.rows * mapMetaData.cols) + " " + str(towerHeight) + " " +outputDir+"/out_"+str(mapMetaData.rows * mapMetaData.cols)+".bin"
+    startcmd = absolutePath+'/algorithms/CUDA/main '+mapFile + " " + str(mapMetaData.rows * mapMetaData.cols) + " " + str(towerHeight) + " " +outputDir+"/out_"+str(mapMetaData.rows * mapMetaData.cols)+".bin "
     print startcmd
     p = subprocess.Popen(startcmd, shell=True,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -349,13 +387,13 @@ def createInputFileForAlgorithm(mapMetaData, outputDir, inputCoordinates, source
                 nearestPointIndex = idx + 1
                 if mapMetaData.elevationData[PI][PJ] == mapMetaData.nodata:
                     nearestPointIndex = checkForTheClosestOne(sink, PI, PJ, mapMetaData, nearestPointIndex - 1)
-        nodeProperty = {"type": "sink", "capacity": sink.demand, "mountingHeight": 1, "frequencies": [2.4, 3, 5, 24],
+        nodeProperty = {"type": "sink", "capacity": sink.demand, "mountingHeight": sink.mountingHeight, "frequencies": [2.4, 3, 5, 24],
                         "revenue": sink.revenue}  # randint(1000, 5500)
         coordinates = {"lat": mapMetaData.indexMapping[nearestPointIndex - 1].lat,
                        "lng": mapMetaData.indexMapping[nearestPointIndex - 1].lng}
         totalSource += sink.demand
         jsonDATA.append({"node": int(nearestPointIndex), "nodeProperty": nodeProperty, "coordinates": coordinates})
-    nodeProperty = {"type": "source", "capacity": totalSource, "mountingHeight": 1, "frequencies": [2.4, 3, 5, 24]}
+    nodeProperty = {"type": "source", "capacity": totalSource, "mountingHeight": sourceCoordinates.mountingHeight, "frequencies": [2.4, 3, 5, 24]}
     nearestSourceIndex = getNearestIndex(mapMetaData.indexMapping, sourceCoordinates)
     nearestSourceIndex = assignUniqueSource(mapMetaData, nearestSourceIndex, jsonDATA)
     sourceCoordinates = {"lat": sourceCoordinates.lat, "lng": sourceCoordinates.lng}
@@ -388,6 +426,7 @@ def writeInputPointsInRemovalFile(outputDir, removalFileName):
             removalFile.write(str(n) + "\n")
     removalFile.close()
 
+
 def createPinnedEdgesFile(outputDir,inputEdges, indexMapping):
     pinnedOutputFiles = open(outputDir + "/pinnedEdges.txt", "w")
     with open(inputEdges, "r") as inputEdgesPinnedFile:
@@ -402,33 +441,36 @@ def createPinnedEdgesFile(outputDir,inputEdges, indexMapping):
     pinnedOutputFiles.close()
 
 
+
 tempDirForMapTiles = os.path.expanduser("~/.cache/srtm/")
 QUIET = True
-# scaling = 490000 #Number of nodes we want to distribute
+scaling = int(sys.argv[3]) #Number of nodes we want to distribute
+
 if __name__ == '__main__':
-    gscript = None
-    scaling = "0"  # Number of nodes we want to distribute
-    globalMapMetaData = metaData(0, 0, 0, 0, 0, 0)
+    absolutePath = sys.argv[7]
     start_time = time.time()
-    absolutePath = sys.argv[6]
     inputSinks = sys.argv[1]
     inputSource = sys.argv[2]
-    inputEdges = sys.argv[8]
-    mainSource = coordinate(0, 0, 0)
+    inputEdges = sys.argv[9]
+    equipmentFilePath = sys.argv[10]
+    inputForPinnning = ""
+    inputForPinningTowers = ""
+    mainSource = coordinate(0,0,0)
     with open(inputSource, "r") as inputSourceFileHandel:
         for line in inputSourceFileHandel:
             mainSource.lat = float(line.split(",")[0])
             mainSource.lng = float(line.split(",")[1])
+            mainSource.mountingHeight = int(line.split(",")[2])
     inputSourceFileHandel.close()
-    equipmentFilePath = sys.argv[9]
 
     # create output folder
-    outputDir = "/home/cuda/output/new/" + inputSinks.split("/")[8].split(".")[0]
+    outputDir = "/home/cuda/output/new/"+inputSinks.split("/")[8].split(".")[0]
     try:
         os.mkdir(outputDir)
     except:
-        print "Output folder exists..."
+        print "Output folder exists, overwriting content..."
 
+    #inputSinks, customerLocations = removeDuplicates(inputSinks)
     customerLocations = []
     with open(inputSinks) as inputSinkFile:
         for sink in inputSinkFile:
@@ -443,19 +485,17 @@ if __name__ == '__main__':
     fileNames = downloadMapTiles(customerLocations, mapBoundaries)
     print fileNames
     gscript = myGrass.init(outputDir, tempDirForMapTiles, fileNames)
+    globalMapMetaData = metaData(0, 0, 0, 0, 0, 0)
 
-
-    mapFile = createGlobalMap(gscript, outputDir, fileNames, inputSinks, mapBoundaries, int(scaling), globalMapMetaData)
-    globalMapMetaData = getMetaData(globalMapMetaData, outputDir)
-    binaryFile = calculateViewsheds(mapFile, globalMapMetaData, int(sys.argv[7]), outputDir, absolutePath)
+    mapFile = createGlobalMap(gscript, outputDir, fileNames, inputSinks, mapBoundaries, scaling, globalMapMetaData)
+    globalMapMetaData = getMetaData(mapFile, globalMapMetaData, outputDir)
+    createPointHeightMapping(customerLocations, outputDir, globalMapMetaData.indexMapping)
+    binaryFile = calculateViewsheds(mapFile, globalMapMetaData, int(sys.argv[8]), outputDir, absolutePath)
 
     with open(outputDir+"/basicProperties.txt", "w") as clusteringResultHandel:
-        ux,uy = globalMapMetaData.getUnitXAndY()
-        uxr, uyr = globalMapMetaData.getReducedUnitXAndY()
-        clusteringResultHandel.write(str(globalMapMetaData.rows)+","+str(globalMapMetaData.cols)+"\n")
-        clusteringResultHandel.write(str(globalMapMetaData.reducedRows) + "," + str(globalMapMetaData.reducedCols) + "\n")
-        clusteringResultHandel.write(str(ux)+","+str(uy)+"\n")
-        clusteringResultHandel.write(str(uxr) + "," + str(uyr) + "\n")
+        ux, uy = globalMapMetaData.getUnitXAndY()
+        clusteringResultHandel.write(str(globalMapMetaData.rows) + "," + str(globalMapMetaData.cols) + "\n")
+        clusteringResultHandel.write(str(ux) + "," + str(uy) + "\n")
         clusteringResultHandel.write(outputDir)
     clusteringResultHandel.close()
     customerLocations = customerLocations[:-1]
@@ -465,10 +505,10 @@ if __name__ == '__main__':
     removalFileForAlgo = "noRemoval"
     removalApplied = "0"
 
-    if sys.argv[3] == "c":
+    if sys.argv[4] == "c":
         removalApplied = "1"
-    #running clustering script
-        cmd = absolutePath + '/algorithms/clusteringRemoval/clusteringRemoval ' + sys.argv[4] + ' ' + outputDir + ' 0.6'
+        #running clustering script
+        cmd = absolutePath+'/algorithms/clusteringRemoval/clusteringRemoval ' + sys.argv[5] + ' ' + outputDir + ' 0.6'
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         while p1.poll() == None:
@@ -489,6 +529,7 @@ if __name__ == '__main__':
         clusteringRemovalFile.close()
 
         removalFileForAlgo = "clusteringRemovalRemaining"
+        writeInputPointsInRemovalFile(outputDir, "clusteringRemovalRemaining.txt")
 
         #map diameter and other stuff for msp
         if not os.path.exists(outputDir + "/clusteringElevation/" + str(totalPoints)):
@@ -501,10 +542,10 @@ if __name__ == '__main__':
             print >> sys.stderr, 'ERROR: %s' % err
             sys.exit(-1)
 
-    if sys.argv[3] == "r":
+    if sys.argv[4] == "r":
         removalApplied = "1"
         #randomRemoval
-        cmd = absolutePath+'/algorithms/randomRemoval/randomRemoval ' + sys.argv[4] + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir+"/out_"+str(globalMapMetaData.rows * globalMapMetaData.cols)+".bin " + outputDir+"/randomRemoval.txt"
+        cmd = absolutePath+'/algorithms/randomRemoval/randomRemoval ' + sys.argv[5] + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir+"/out_"+str(globalMapMetaData.rows * globalMapMetaData.cols)+".bin " + outputDir+"/randomRemoval.txt"
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()
@@ -519,6 +560,7 @@ if __name__ == '__main__':
         print "RL",len(randomRemovalLines)
 
         removalFileForAlgo = "randomRemovalRemaining"
+        writeInputPointsInRemovalFile(outputDir, "randomRemovalRemaining.txt")
 
         if not os.path.exists(outputDir + "/randomRemoval/" + str(len(randomRemovalLines))):
             os.makedirs(outputDir + "/randomRemoval/" + str(len(randomRemovalLines)))
@@ -530,11 +572,11 @@ if __name__ == '__main__':
             print >> sys.stderr, 'ERROR: %s' % err
             sys.exit(-1)
 
-    if sys.argv[3] == "e":
+    if sys.argv[4] == "e":
         removalApplied = "1"
         ##ElevationRemoval
         ux, uy = globalMapMetaData.getUnitXAndY()
-        cmdFCNF = absolutePath+'/algorithms/elevationRemoval/elevationRemoval ' + sys.argv[4] + ' -1 ' + outputDir + "/out.asc " + outputDir + "/out_" + str(int(globalMapMetaData.rows) * int(globalMapMetaData.cols)) + ".bin " + outputDir + "/elevationRemoval.txt 0 " + str(ux) + " " + str(uy)
+        cmdFCNF = absolutePath+'/algorithms/elevationRemoval/elevationRemoval ' + sys.argv[5] + ' -1 ' + outputDir + "/out.asc " + outputDir + "/out_" + str(int(globalMapMetaData.rows) * int(globalMapMetaData.cols)) + ".bin " + outputDir + "/elevationRemoval.txt 0 " + str(ux) + " " + str(uy)
         print cmdFCNF
         FCNFProcess = subprocess.Popen(cmdFCNF, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         outFCNF, err = FCNFProcess.communicate()
@@ -546,10 +588,11 @@ if __name__ == '__main__':
         print "EL", len(elevationRemovalLines)
 
         removalFileForAlgo = "elevationRemovalRemaining"
+        writeInputPointsInRemovalFile(outputDir, "elevationRemovalRemaining.txt")
 
         if not os.path.exists(outputDir + "/elevationRemoval/" + str(len(elevationRemovalLines))):
             os.makedirs(outputDir + "/elevationRemoval/" + str(len(elevationRemovalLines)))
-        cmd = './algorithms/mapDiameterCalculation/mapDiameterCalculation ' + str(len(elevationRemovalLines)) + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir + "/out_" + str(globalMapMetaData.rows * globalMapMetaData.cols) + ".bin " + outputDir + "/index_mapping.txt " + outputDir + "/elevationRemovalRemaining.txt elevationRemoval"
+        cmd = absolutePath+'/algorithms/mapDiameterCalculation/mapDiameterCalculation ' + str(len(elevationRemovalLines)) + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir + "/out_" + str(globalMapMetaData.rows * globalMapMetaData.cols) + ".bin " + outputDir + "/index_mapping.txt " + outputDir + "/elevationRemovalRemaining.txt elevationRemoval"
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()
@@ -557,10 +600,10 @@ if __name__ == '__main__':
             print >> sys.stderr, 'ERROR: %s' % err
             sys.exit(-1)
 
-    if sys.argv[3] != "n":
+    if sys.argv[4] != "n":
         writeInputPointsInRemovalFile(outputDir, removalFileForAlgo + ".txt")
 
-    if sys.argv[5] == "fcnf":
+    if sys.argv[6] == "fcnf":
         cmd = absolutePath + "/algorithms/FCNF/main " + outputDir + " " + removalFileForAlgo + " " + equipmentFilePath + " " + removalApplied
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -573,9 +616,9 @@ if __name__ == '__main__':
         fcnfResultFile.close()
 
 
-    if sys.argv[5] == "mcf":
+    if sys.argv[6] == "mcf":
         print "MCF Without Removal"
-        cmd = absolutePath + "/algorithms/MCF-RR/mcf " + outputDir + " " + removalFileForAlgo + " " + equipmentFilePath + " 1 10 98574"
+        cmd = absolutePath+"/algorithms/MCF-RR/mcf "+outputDir+" "+removalFileForAlgo+" "+equipmentFilePath+" 1 10 98574"
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()
@@ -583,7 +626,9 @@ if __name__ == '__main__':
             print >> sys.stderr, 'ERROR: %s' % err
             sys.exit(-1)
 
+
     print "All Done"
-    with open(outputDir + "/acknowledged.txt", "w") as ackFile:
+    with open(outputDir+"/acknowledged.txt", "w") as ackFile:
         ackFile.write("Done\n")
     ackFile.close()
+

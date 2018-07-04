@@ -8,6 +8,8 @@
 #include <limits>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sstream>
+#include <map>
 
 #include <bitset>
 using namespace std;
@@ -172,7 +174,7 @@ short getBit(unsigned char *A, unsigned long long int k)
   return ( (A[k/8] & (1 << (k%8) )) != 0 ) ;
 }
 
-void readFileAndReturnTerrain(Terrain *h_terrain, char* file_name, int towerHeight){
+void readFileAndReturnTerrain(Terrain *h_terrain, char* file_name, int towerHeight, char* pointHeighMappingFilePath){
     ifstream fin;
     fin.open(file_name);
     // assume the file is in AAIGrid format
@@ -222,7 +224,7 @@ void readFileAndReturnTerrain(Terrain *h_terrain, char* file_name, int towerHeig
         }
         rowIndex++;
     }
-    //free(pixelInRow);
+    free(pixelInRow);
 
     /*
      * Print the grid for testing
@@ -237,13 +239,37 @@ void readFileAndReturnTerrain(Terrain *h_terrain, char* file_name, int towerHeig
     *
     *
     */
+    /////
+    ifstream pointHeighMappingFile(pointHeighMappingFilePath);
+    map<long, int> towerHeightMap;
+    string line;long towerIndex; int height;
+    while (pointHeighMappingFile >> line){
+        stringstream ss(line);
+        string token;
+        getline(ss, token, ',');
+        towerIndex = stol(token);
+        getline(ss, token, ',');
+        height = stoi(token);
+        towerHeightMap[towerIndex] = height;
+    }
+    pointHeighMappingFile.close();
+    map<long, int>::iterator it;
+    for(it = towerHeightMap.begin(); it != towerHeightMap.end(); ++it){
+        std::cout << it->first << " => " << it->second << '\n';
+    }
+
+    /////
     h_terrain->towerLocations = (Point*) malloc((h_terrain->nRows * h_terrain->nCols)  * sizeof(Point));
-    int towerIndex = 0;
+    towerIndex = 0;
 
     for(int i = 0; i < h_terrain->nRows; i++){
         for(int j = 0; j < h_terrain->nCols; j++){
             // cout << h_terrain->gridTerrian[h_terrain->nCols * i + j].elevation << " ";
-            h_terrain->gridTerrian[(h_terrain->nCols * i) + j].mountingHeight = towerHeight;
+            if(towerHeightMap.count((h_terrain->nCols * i) + j) > 0){
+                h_terrain->gridTerrian[(h_terrain->nCols * i) + j].mountingHeight = towerHeightMap[(h_terrain->nCols * i) + j];
+            }else{
+                h_terrain->gridTerrian[(h_terrain->nCols * i) + j].mountingHeight = towerHeight;
+            }
             h_terrain->towerLocations[towerIndex].row = i;
             h_terrain->towerLocations[towerIndex].col = j;
             towerIndex++;
@@ -251,10 +277,17 @@ void readFileAndReturnTerrain(Terrain *h_terrain, char* file_name, int towerHeig
         // cout << endl;
     }
 
+    //testing of mounting height
+    // for(int i = 0; i < h_terrain->nRows; i++){
+    //     for(int j = 0; j < h_terrain->nCols; j++){
+    //         cout << "Height of tower " << (h_terrain->nCols * i) + j << " is: " << h_terrain->gridTerrian[(h_terrain->nCols * i) + j].mountingHeight << endl;
+    //     }
+    // }
+
+
     //For testing tower position
     //cout << h_terrain->towerLocations[7].row << h_terrain->towerLocations[7].col << endl;
     //cout << h_terrain->gridTerrian[(h_terrain->nCols *  h_terrain->towerLocations[7].row) + h_terrain->towerLocations[7].col].elevation
-    //exit(1);
 
     fin.close();
 
@@ -458,7 +491,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
     cout << "Reading Input File...." << endl;
-    readFileAndReturnTerrain(&h_terrain, argv[1], atoi(argv[3]));
+    readFileAndReturnTerrain(&h_terrain, argv[1], atoi(argv[3]), argv[5]);
     //exit(1);
     cout << "After file output" << endl;
     h_pixel_grid = h_terrain.gridTerrian;

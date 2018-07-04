@@ -50,6 +50,9 @@ Equipment MCFRR::getBestDevice(GPSPoint p1, GPSPoint p2, int capacityToCompare) 
 
 void MCFRR::clearMetaData() {
     this->edgesKept.clear();
+    for (auto const& x : this->pinnedEdges){
+        this->edgesKept[x.first] = x.second;
+    }
     this->currentSolution.totalOriginalCost = 0.0;
     this->currentSolution.totalPinnedCost = 0.0;
     this->currentSolution.solutionNumber = 0.0;
@@ -66,6 +69,24 @@ double MCFRR::calculateEquipmentCostOfNetwork(const SimpleMinCostFlow &minCostFl
         }
     }
     return totalEquipmentCost;
+}
+
+bool MCFRR::isNetworkHasPinnedEdges(const SimpleMinCostFlow &minCostFlow){
+    for (auto const& x : this->pinnedEdges){
+        bool isEdgeFound = false;
+        for(int i = 0; i < minCostFlow.NumArcs(); i++) {
+            if(minCostFlow.Flow(i) > 1){
+                string edge = to_string(minCostFlow.Tail(i)) + "," + to_string(minCostFlow.Head(i));
+                if(x.first == edge){
+                    isEdgeFound = true;
+                }
+            }
+        }
+        if(!isEdgeFound){
+            return false;
+        }
+    }
+    return true;
 }
 
 
@@ -90,13 +111,21 @@ long MCFRR::getNodeLocalIndex(long node) {
     return -1;
 }
 
+long MCFRR::getIndexFromNetworkNodesVector(long node){
+    vector<long>::iterator itr = std::find(this->networkNodes.begin(), this->networkNodes.end(), node);
+    if (itr != this->networkNodes.cend()) {
+        return std::distance(this->networkNodes.begin(), itr);
+    }
+    return -1;
+}
+
 
 void MCFRR::initializePreliminaryData() {
     string line;
     char filePathBuffer[200];
     //reading map properties
     filePathBuffer[0] = '\0';
-    sprintf(filePathBuffer, "%s/clusteringResult.txt", this->mainOutputDir);
+    sprintf(filePathBuffer, "%s/basicProperties.txt", this->mainOutputDir);
     ifstream mapPropFile(filePathBuffer);
     mapPropFile >> line; ///read first line
     stringstream ss(line);
@@ -127,6 +156,8 @@ void MCFRR::initializePreliminaryData() {
         ind++;
     }
     indexMappingFileHandel.close();
+
+    //reading removal file
     long nodeIndex = -1;
     filePathBuffer[0] = '\0';
     sprintf(filePathBuffer, "%s/%s.txt", this->mainOutputDir, this->removalAlgorithm);
@@ -154,16 +185,42 @@ void MCFRR::initializePreliminaryData() {
                 int source = int(it[0]["node"]) - 1;
                 long localSourceIndex = this->getNodeLocalIndex(source);
                 this->sourceMap[localSourceIndex] = int(it[0]["nodeProperty"]["capacity"]);
+                this->heightMap[localSourceIndex] = int(it[0]["nodeProperty"]["mountingHeight"]);
             } else {
                 int sinkNode = int(it[0]["node"]) - 1;
                 long localSinkIndex = this->getNodeLocalIndex(sinkNode);
                 int capacity = int(it[0]["nodeProperty"]["capacity"]) * -1;
                 this->sinksMap[localSinkIndex] += capacity;
+                this->heightMap[localSinkIndex] = int(it[0]["nodeProperty"]["mountingHeight"]);
             }
         }
     }
     inputJsonHandel.close();
 
+    //readingPinnedEdgesInput
+    filePathBuffer[0] = '\0';
+    sprintf(filePathBuffer, "%s/pinnedEdges.txt", this->mainOutputDir);
+    ifstream inputPinnedEdgesHandel(filePathBuffer);
+    line = "";
+    while(inputPinnedEdgesHandel >> line){
+        Edge newEdge;
+        stringstream ss(line);
+        string token;
+        getline(ss, token, ',');
+        newEdge.tail = this->getIndexFromNetworkNodesVector(stol(token)); //doing this to get the local index relative to the list of selected nodes after node removal algorithm
+        getline(ss, token, ',');
+        newEdge.head = this->getIndexFromNetworkNodesVector(stol(token)); //doing this to get the local index relative to the list of selected nodes after node removal algorithm
+        this->pinnedEdges[line] = newEdge;
+        this->edgesKept[line] = newEdge;
+    }
+//     for (auto const& x : this->pinnedEdges)
+// {
+//     std::cout << x.first  // string (key)
+//               << ':'
+//               << x.second.tail << "," << x.second.head// string's value
+//               << std::endl ;
+// }
+//     exit(1);
     //reading equipments
     ifstream equipmentFile ( this->equipmentFilePath );
     int i = 0;
@@ -211,7 +268,9 @@ void MCFRR::writeJSONOutput(const SimpleMinCostFlow &minCostFlow, int iter) {
             Edge edge;
             Equipment equipment = this->getBestDevice(this->allCoordinates[this->networkNodes[minCostFlow.Tail(i)]], this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ], minCostFlow.Flow(i));
             output["edges"][outputCounter]["nodes"] = json::array({this->networkNodes[minCostFlow.Tail(i)], this->networkNodes[minCostFlow.Head(i)]});
+            //output["edges"][outputCounter]["coordinates"] = json::array({this->allCoordinates[ this->networkNodes[minCostFlow.Tail(i)] ].lat,this->allCoordinates[ this->networkNodes[minCostFlow.Tail(i)] ].lng, this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ].lat, this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ].lng });
             output["edges"][outputCounter]["edgeProperty"]["unitCost"] = minCostFlow.UnitCost(i);
+            output["edges"][outputCounter]["edgeProperty"]["deviceId"] = equipment.id;
             output["edges"][outputCounter]["edgeProperty"]["bandwidth"] = equipment.throughput;//minCostFlow.Capacity(i);
             output["edges"][outputCounter]["edgeProperty"]["frequency"] = "2.4 GHz";
             output["edges"][outputCounter]["edgeProperty"]["flowPassed"] = minCostFlow.Flow(i);
@@ -248,7 +307,9 @@ void MCFRR::writeJSONOutput(const SimpleMinCostFlow &minCostFlow, int iter) {
     for (auto &node : nodes) {
         output["nodes"][outputCounter]["node"] = node.first;
         output["nodes"][outputCounter]["nodeProperty"]["capacity"] = node.second;
-        output["nodes"][outputCounter]["nodeProperty"]["mountingHeight"] = 1;
+        output["nodes"][outputCounter]["nodeProperty"]["mountingHeight"] = this->heightMap[node.first];
+        output["nodes"][outputCounter]["nodeProperty"]["lat"] = this->allCoordinates[node.first].lat;
+        output["nodes"][outputCounter]["nodeProperty"]["lng"] = this->allCoordinates[node.first].lng;
         if (node.second < 0)
         {
             output["nodes"][outputCounter]["nodeProperty"]["type"] = "sink";
@@ -294,11 +355,16 @@ bool MCFRR::isEdgeWithLeafNode(string edge) {
         getline( ss, subString, ',' );
         nodesInEdge.push_back( stol(subString) );
     }
+    // cout << "Node to check: " << nodesInEdge[0] << "::" << nodesInEdge[1] << endl;
+    // cout << "*****************"<<endl;
     for(auto eIt = this->currentSolution.solutionEdges.begin(); eIt !=  this->currentSolution.solutionEdges.end(); ++eIt){
+        // cout << "IC: " << eIt->second.head << "::" << eIt->second.tail << endl;
         if(nodesInEdge[1] == eIt->second.tail){
+            // cout << "IC: TRUE" << endl;
             return false;
         }
     }
+    cout << "*****************"<<endl;
     return true;
 }
 
@@ -321,10 +387,13 @@ void MCFRR::doFurtherOptimization(bool onlyEdgesWithLeafNodes) {
 
                  return l.first < r.first;
              });
-        for (auto it = sortedKeptEdgeList.begin(); it != sortedKeptEdgeList.end(); ++it) {
-//            std::cout << it->first << ": " << it->second.passedFlow << endl;
-        }
+        // for (auto it = sortedKeptEdgeList.begin(); it != sortedKeptEdgeList.end(); ++it) {
+        //     std::cout <<"{"<< it->first << "::" << it->second.passedFlow<<"}" << endl;
+        // }
         for(auto it = sortedKeptEdgeList.begin(); it != sortedKeptEdgeList.end(); ++it) {
+            if(this->currentSolution.solutionEdges.count(it->first) == 0){
+                continue;
+            }
             if(onlyEdgesWithLeafNodes && !this->isEdgeWithLeafNode(it->first)){
                 cout << "The edge: " << it->first << "::" << it->second.passedFlow << " is skipped in Part-1 of Phase 2. " << endl;
                 continue;
@@ -334,15 +403,24 @@ void MCFRR::doFurtherOptimization(bool onlyEdgesWithLeafNodes) {
                 continue;
             }
             this->edgesKept[it->first].isChecked = true;
+            if(this->pinnedEdges.count(it->first) > 0){
+                cout << "The edge: " << it->first << "::" << it->second.passedFlow << " is already pinned" << endl;
+                continue;
+            }
             this->currentSolution.solutionEdges[it->first].isChecked = true;
             SimpleMinCostFlow minCostFlow;
             unsigned long long int totalNodes = (unsigned long long int) this->rows * this->cols;
             for (long i = 0; i < this->networkNodes.size(); i++) {
                 for (long j = 0; j < this->networkNodes.size(); j++) {
-                    if (getBit(this->networkNodes[i] * totalNodes + this->networkNodes[j])) {
+                    if(this->pinnedEdges.count(to_string(i)+","+to_string(j)) > 0){
+                        minCostFlow.AddArcWithCapacityAndUnitCost(i,j,INT_MAX, 0);
+                    }else if (getBit(this->networkNodes[i] * totalNodes + this->networkNodes[j])) {
+                        if(i == j){
+                            continue;
+                        }
                         double distance = this->calculateDistance(this->allCoordinates[ this->networkNodes[i] ], this->allCoordinates[ this->networkNodes[j] ]);
                         double unitCost = this->getEdgeUnitCost(distance);
-                        if (this->edgesKept.count(to_string(i) + "," + to_string(j)) > 0 && !this->edgesKept[to_string(i) + "," + to_string(j)].isChecked) {
+                        if ( (this->edgesKept.count(to_string(i) + "," + to_string(j)) > 0 && !this->edgesKept[to_string(i) + "," + to_string(j)].isChecked) ) {
                             unitCost = 0;
                         } else if (this->currentSolution.solutionEdges.count(to_string(i) + "," + to_string(j)) > 0 && !this->currentSolution.solutionEdges[to_string(i) + "," + to_string(j)].isChecked) {
                             Edge existingEdge = this->currentSolution.solutionEdges[to_string(i) + "," + to_string(j)]; //solutionEdgeMap Hold the solution of previous iteration.
@@ -365,7 +443,7 @@ void MCFRR::doFurtherOptimization(bool onlyEdgesWithLeafNodes) {
             cout << "Checked For: " << it->first << " :: " << it->second.passedFlow << endl;
             if (solveStatus == SimpleMinCostFlow::OPTIMAL) {
                 double equipmentCost = this->calculateEquipmentCostOfNetwork(minCostFlow);
-                if (equipmentCost < this->currentSolution.totalEquipmentCost) {
+                if (equipmentCost < this->currentSolution.totalEquipmentCost && this->isNetworkHasPinnedEdges(minCostFlow)) { //if network does not have pinned edges then ignore it even if it has lower cost in phase 2
                     costCompFile << time(0) << "," << equipmentCost << ",l," << it->second.passedFlow << endl;
                     isFurtherOptimization = true;
                     this->edgesKept.erase(it->first);
@@ -405,13 +483,27 @@ int MCFRR::solveInIterations(unsigned long randomSeed) {
     int iterCount = 0;
     struct timeval start, end;
     gettimeofday(&start, NULL);
+//     for (auto const& x : this->edgesKept)
+// {
+//     std::cout << x.first  // string (key)
+//               << ':'
+//               << x.second.tail << "," << x.second.head// string's value
+//               << std::endl ;
+// }
+//     exit(1);
     while(true){
+        this->totalNetworkEdges = 0;
         SimpleMinCostFlow minCostFlow;
         unsigned long long int totalNodes = (unsigned long long int)this->rows * this->cols;
         for(long i = 0; i < this->networkNodes.size(); i++) {
             for (long j = 0; j < this->networkNodes.size(); j++) {
-
-                if(getBit(this->networkNodes[i] * totalNodes + this->networkNodes[j])){
+                if(this->pinnedEdges.count(to_string(i)+","+to_string(j)) > 0){
+                    cout << i << ":" << j << endl;
+                    minCostFlow.AddArcWithCapacityAndUnitCost(i,j,INT_MAX, 0);
+                }else if(getBit(this->networkNodes[i] * totalNodes + this->networkNodes[j])){
+                    if(i == j){
+                        continue;
+                    }
                     this->totalNetworkEdges++;
                     double distance = this->calculateDistance(this->allCoordinates[ this->networkNodes[i] ], this->allCoordinates[ this->networkNodes[j] ]);
                     double unitCost = this->getEdgeUnitCost(distance);
@@ -438,7 +530,7 @@ int MCFRR::solveInIterations(unsigned long randomSeed) {
             minCostFlow.SetNodeSupply(it.first, it.second);
         }
 
-        cout << "Kept Edges: " << this->edgesKept.size() << " so far" << endl;
+        cout << "Kept Edges: " << this->edgesKept.size() << " / " << this->totalNetworkEdges << " so far" << endl;
         cout << "Start Solving For Iteration: " << iterCount << endl;
         int solveStatus = minCostFlow.SolveMaxFlowWithMinCost();
         if (solveStatus == SimpleMinCostFlow::OPTIMAL){

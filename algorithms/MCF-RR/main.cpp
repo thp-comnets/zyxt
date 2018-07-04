@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     outputFile << "Seed of this run: " << argv[6] << endl;
     outputFile << "Min Solution: " << minSolution.totalEquipmentCost << " found in run: " << minRun+1 << endl;
     filePathBuff[0] = '\0';
-    sprintf(filePathBuff, "%s/MCF/noRemoval_%d", argv[1], minRun+1);
+    sprintf(filePathBuff, "%s/MCF/%s_%d", argv[1], argv[2], minRun+1);
     outputFile << filePathBuff << endl;
     mcf.setEdgesKept(edgesKeptInMinSolution);
     mcf.setPreviousSolution(minSolution);

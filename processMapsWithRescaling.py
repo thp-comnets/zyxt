@@ -281,11 +281,11 @@ def getMetaData(mapFile, mapMetaData, outputDir):
     indexMappingFile.close()
     return mapMetaData
 
-def calculateViewsheds(mapFile, mapMetaData, towerHeight, outputDir):
+def calculateViewsheds(mapFile, mapMetaData, towerHeight, outputDir, absolutePath):
 
     print 'Starting CUDA'
     print "thp: double check the metaData"
-    startcmd = './algorithms/CUDA/main '+mapFile + " " + str(mapMetaData.rows * mapMetaData.cols) + " " + str(towerHeight) + " " +outputDir+"/out_"+str(mapMetaData.rows * mapMetaData.cols)+".bin"
+    startcmd = absolutePath+'/algorithms/CUDA/main '+mapFile + " " + str(mapMetaData.rows * mapMetaData.cols) + " " + str(towerHeight) + " " +outputDir+"/out_"+str(mapMetaData.rows * mapMetaData.cols)+".bin"
     print startcmd
     p = subprocess.Popen(startcmd, shell=True,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -790,9 +790,10 @@ scaling = int(sys.argv[3]) #Number of nodes we want to distribute
 # scaling = 1600 #Number of nodes we want to distribute
 
 if __name__ == '__main__':
+    absolutePath = sys.argv[7]
     start_time = time.time()
-    inputSinks = "customerNodes/" + sys.argv[1]
-    inputSource = "customerNodes/" + sys.argv[2]
+    inputSinks = sys.argv[1]
+    inputSource = sys.argv[2]
     clusterDir = "//"#sys.argv[3]#"/home/cuda/Dropbox/wisp_planning_tool/clustering/kmeans/new_flat_map/10x10x10/"
     inputForPinnning = ""
     inputForPinningTowers = ""
@@ -804,7 +805,7 @@ if __name__ == '__main__':
     inputSourceFileHandel.close()
 
     # create output folder
-    outputDir = "/home/cuda/output/"+inputSinks.split("/")[1].split(".")[0]+"_rescaled_"+sys.argv[2]
+    outputDir = "/home/cuda/output/new/"+inputSinks.split("/")[8].split(".")[0]
     try:
         os.mkdir(outputDir)
     except:
@@ -829,7 +830,7 @@ if __name__ == '__main__':
 
     mapFile = createGlobalMap(gscript, outputDir, fileNames, inputSinks, mapBoundaries, scaling, globalMapMetaData)
     globalMapMetaData = getMetaData(mapFile, globalMapMetaData, outputDir)
-    binaryFile = calculateViewsheds(mapFile, globalMapMetaData, 10, outputDir)
+    binaryFile = calculateViewsheds(mapFile, globalMapMetaData, int(sys.argv[8]), outputDir, absolutePath)
 
     with open(outputDir+"/basicProperties.txt", "w") as clusteringResultHandel:
         ux,uy = globalMapMetaData.getUnitXAndY()
@@ -837,6 +838,7 @@ if __name__ == '__main__':
         clusteringResultHandel.write(str(ux)+","+str(uy)+"\n")
         clusteringResultHandel.write(outputDir)
     clusteringResultHandel.close()
+    customerLocations = customerLocations[:-1]
     createInputFileForAlgorithm(globalMapMetaData, outputDir, customerLocations, mainSource)
 
     removalFileForAlgo = "noRemoval"
@@ -845,7 +847,7 @@ if __name__ == '__main__':
     if sys.argv[4] == "c":
         removalApplied = "1"
         #running clustering script
-        cmd = './algorithms/clusteringRemoval/clusteringRemoval ' + sys.argv[5] + ' ' + outputDir + ' 0.6'
+        cmd = absolutePath+'/algorithms/clusteringRemoval/clusteringRemoval ' + sys.argv[5] + ' ' + outputDir + ' 0.6'
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         while p1.poll() == None:
@@ -870,7 +872,7 @@ if __name__ == '__main__':
         #map diameter and other stuff for msp
         if not os.path.exists(outputDir + "/clusteringElevation/" + str(totalPoints)):
             os.makedirs(outputDir + "/clusteringElevation/" + str(totalPoints))
-        cmd = './algorithms/mapDiameterCalculation/mapDiameterCalculation ' + str(totalPoints) + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir + "/out_" + str(globalMapMetaData.rows * globalMapMetaData.cols) + ".bin " + outputDir + "/index_mapping.txt " + outputDir+"/clusteringRemovalRemaining.txt clusteringElevation"
+        cmd = absolutePath+'/algorithms/mapDiameterCalculation/mapDiameterCalculation ' + str(totalPoints) + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir + "/out_" + str(globalMapMetaData.rows * globalMapMetaData.cols) + ".bin " + outputDir + "/index_mapping.txt " + outputDir+"/clusteringRemovalRemaining.txt clusteringElevation"
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()
@@ -881,7 +883,7 @@ if __name__ == '__main__':
     if sys.argv[4] == "r":
         removalApplied = "1"
         #randomRemoval
-        cmd = './algorithms/randomRemoval/randomRemoval ' + sys.argv[5] + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir+"/out_"+str(globalMapMetaData.rows * globalMapMetaData.cols)+".bin " + outputDir+"/randomRemoval.txt"
+        cmd = absolutePath+'/algorithms/randomRemoval/randomRemoval ' + sys.argv[5] + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir+"/out_"+str(globalMapMetaData.rows * globalMapMetaData.cols)+".bin " + outputDir+"/randomRemoval.txt"
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()
@@ -899,7 +901,7 @@ if __name__ == '__main__':
 
         if not os.path.exists(outputDir + "/randomRemoval/" + str(len(randomRemovalLines))):
             os.makedirs(outputDir + "/randomRemoval/" + str(len(randomRemovalLines)))
-        cmd = './algorithms/mapDiameterCalculation/mapDiameterCalculation ' + str( len(randomRemovalLines) ) + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir + "/out_" + str(globalMapMetaData.rows * globalMapMetaData.cols) + ".bin " + outputDir + "/index_mapping.txt " + outputDir + "/randomRemovalRemaining.txt randomRemoval"
+        cmd = absolutePath+'/algorithms/mapDiameterCalculation/mapDiameterCalculation ' + str( len(randomRemovalLines) ) + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir + "/out_" + str(globalMapMetaData.rows * globalMapMetaData.cols) + ".bin " + outputDir + "/index_mapping.txt " + outputDir + "/randomRemovalRemaining.txt randomRemoval"
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()
@@ -911,7 +913,7 @@ if __name__ == '__main__':
         removalApplied = "1"
         ##ElevationRemoval
         ux, uy = globalMapMetaData.getUnitXAndY()
-        cmdFCNF = './algorithms/elevationRemoval/elevationRemoval ' + sys.argv[5] + ' -1 ' + outputDir + "/out.asc " + outputDir + "/out_" + str(int(globalMapMetaData.rows) * int(globalMapMetaData.cols)) + ".bin " + outputDir + "/elevationRemoval.txt 0 " + str(ux) + " " + str(uy)
+        cmdFCNF = absolutePath+'/algorithms/elevationRemoval/elevationRemoval ' + sys.argv[5] + ' -1 ' + outputDir + "/out.asc " + outputDir + "/out_" + str(int(globalMapMetaData.rows) * int(globalMapMetaData.cols)) + ".bin " + outputDir + "/elevationRemoval.txt 0 " + str(ux) + " " + str(uy)
         print cmdFCNF
         FCNFProcess = subprocess.Popen(cmdFCNF, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         outFCNF, err = FCNFProcess.communicate()
@@ -926,7 +928,7 @@ if __name__ == '__main__':
 
         if not os.path.exists(outputDir + "/elevationRemoval/" + str(len(elevationRemovalLines))):
             os.makedirs(outputDir + "/elevationRemoval/" + str(len(elevationRemovalLines)))
-        cmd = './algorithms/mapDiameterCalculation/mapDiameterCalculation ' + str(len(elevationRemovalLines)) + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir + "/out_" + str(globalMapMetaData.rows * globalMapMetaData.cols) + ".bin " + outputDir + "/index_mapping.txt " + outputDir + "/elevationRemovalRemaining.txt elevationRemoval"
+        cmd = absolutePath+'/algorithms/mapDiameterCalculation/mapDiameterCalculation ' + str(len(elevationRemovalLines)) + " " + str(globalMapMetaData.rows) + ' ' + str(globalMapMetaData.cols) + ' ' + outputDir + "/out_" + str(globalMapMetaData.rows * globalMapMetaData.cols) + ".bin " + outputDir + "/index_mapping.txt " + outputDir + "/elevationRemovalRemaining.txt elevationRemoval"
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()
@@ -935,7 +937,7 @@ if __name__ == '__main__':
             sys.exit(-1)
 
     if sys.argv[6] == "fcnf":
-        cmd = "./algorithms/FCNF/main "+outputDir+" "+removalFileForAlgo+" equipments.csv "+sys.argv[6]+" "+removalApplied
+        cmd = absolutePath+"/algorithms/FCNF/main "+outputDir+" "+removalFileForAlgo+" "+absolutePath+"/equipments.csv 43200 "+removalApplied
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()
@@ -948,22 +950,18 @@ if __name__ == '__main__':
 
 
     if sys.argv[6] == "mcf":
-        if sys.argv[4] == "n":
-            print "MCF Without Removal"
-            cmd = "./algorithms/MCF-RR/mcf "+outputDir+" "+removalFileForAlgo+" equipments.csv 0 10 " + str(time.time())
-            print cmd
-            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out, err = p1.communicate()
-            if p1.returncode != 0:
-                print >> sys.stderr, 'ERROR: %s' % err
-                sys.exit(-1)
+        print "MCF Without Removal"
+        cmd = absolutePath+"/algorithms/MCF-RR/mcf "+outputDir+" "+removalFileForAlgo+" "+absolutePath+"/equipments.csv 1 10 " + str(time.time())
+        print cmd
+        p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p1.communicate()
+        if p1.returncode != 0:
+            print >> sys.stderr, 'ERROR: %s' % err
+            sys.exit(-1)
 
-        else:
-            print "MCF With Removal"
-            cmd = "./algorithms/MCF-RR/mcf_removal " + outputDir + " " + removalFileForAlgo + " equipments.csv 0 10 " + str(time.time())
-            print cmd
-            p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            out, err = p1.communicate()
-            if p1.returncode != 0:
-                print >> sys.stderr, 'ERROR: %s' % err
-                sys.exit(-1)
+
+    print "All Done"
+    with open(outputDir+"/acknowledged.txt", "w") as ackFile:
+        ackFile.write("Done\n")
+    ackFile.close()
+

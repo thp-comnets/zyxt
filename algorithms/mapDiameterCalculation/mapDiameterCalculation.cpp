@@ -91,10 +91,10 @@ int main(int argc, char *argv[]) {
             if(getBit(visibilityMatrix, remainingPointsList[i].index * visibilityMatrixNodes + remainingPointsList[j].index)){
                 double distance = calculateDistance(indexMapping[ remainingPointsList[i].index ], indexMapping[ remainingPointsList[j].index ]);
 
-                if(distance <= 0.3) {
+                //if(distance <= 0.3) {
                     totalEdges++;
                     g.addEdge(i, j, distance);
-                }
+                //}
             }
         }
     }
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
     for(long j = 0; j < visibilityMatrixNodes; j++){
         for(long i = 0; i < remainingPoints; i++){
             double distance = calculateDistance(indexMapping[ remainingPointsList[i].index ], indexMapping[j]);
-            if(distance <= 0.3 && getBit(visibilityMatrix, remainingPointsList[i].index * visibilityMatrixNodes + j)){
+            if(/*distance <= 0.3 && */getBit(visibilityMatrix, remainingPointsList[i].index * visibilityMatrixNodes + j)){
                 covered_nodes++;
                 break;
             }

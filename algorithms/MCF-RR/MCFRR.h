@@ -96,7 +96,9 @@ class MCFRR {
     Equipment *equipmentList;
     map<long, int> sourceMap;
     map<long, int> sinksMap;
+    map<long, int> heightMap;
     map<string, Edge> edgesKept;
+    map<string, Edge> pinnedEdges;
     Solution currentSolution;
     long totalNetworkEdges;
     double calculateDistance(GPSPoint, GPSPoint);
@@ -107,7 +109,9 @@ class MCFRR {
     void writeJSONOutput(const SimpleMinCostFlow &minCostFlow, int);
     double getEdgeUnitCost(double);
     double calculateEquipmentCostOfNetwork(const SimpleMinCostFlow &minCostFlow);
+    bool isNetworkHasPinnedEdges(const SimpleMinCostFlow &minCostFlow);
     long getNodeLocalIndex(long node);
+    long getIndexFromNetworkNodesVector(long node);
     bool isEdgeWithLeafNode(string edge);
 public:
     MCFRR(char *mainOutputDir, char *removalAlgorithm, char *equipmentFilePath, int edgeDistanceScaling);

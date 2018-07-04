@@ -26,7 +26,7 @@ all:
 	g++ -std=c++11 algorithms/mapDiameterCalculation/mapDiameterCalculation.cpp -o algorithms/mapDiameterCalculation/mapDiameterCalculation
 
 	#CUDA
-	nvcc -gencode arch=compute_52,code=sm_52 -Xptxas=-v -o algorithms/CUDA/main algorithms/CUDA/main.cu
+	nvcc -std=c++11 -gencode arch=compute_52,code=sm_52 -Xptxas=-v -o algorithms/CUDA/main algorithms/CUDA/main.cu
 
 clean:
 	rm -f algorithms/MCF-RR/*.o algorithms/MCF-RR/mcf
