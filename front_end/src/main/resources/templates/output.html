@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Helping the Lone Operator in the Vast Frontier</title>
+    <!-- ... -->
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css" th:href="@{/css/bootstrap.min.css}" />
+    <link rel="stylesheet" href="/static/css/ion.rangeSlider.css" th:href="@{/css/ion.rangeSlider.css}" />
+    <link rel="stylesheet" href="/static/css/ion.rangeSlider.skinHTML5.css" th:href="@{/css/ion.rangeSlider.skinHTML5.css}" />
+    <!--&lt;!&ndash; Font Awesome &ndash;&gt;-->
+    <!--<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css" />-->
+
+</head>
+<body>
+<header>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <h1 class="text-center">Zyxt - Network planning tool</h1>
+            </div>
+        </div>
+    </div>
+</header>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2">
+            <div class="well" style="height: 775px;">
+                <a th:href="@{/}" class="btn btn-primary btn-sm btn-block sourceBtn">Go To Main</a><br/>
+                <hr/>
+                <section id="output">
+
+                </section>
+
+            </div>
+        </div>
+        <div class="col-md-10">
+            <div class="well">
+                <div class="pull-right">
+
+                    <ul class="list-inline">
+                        <li><b>Legends:</b></li>
+                        <li>Source <img th:src="@{/img/source.png}"></li>
+                        <li>Sink <img th:src="@{/img/sink.png}"></li>
+                        <li>Relay <img th:src="@{/img/intermediate.png}"></li>
+                    </ul>
+                </div>
+                <div id="map" style="width: 100%;min-height: 700px"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="cap_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel"></h4>
+            </div>
+            <div class="modal-body" style="overflow: auto">
+                <div class="form-group">
+                    <div class="col-lg-10">
+                        <input type="number" class="form-control" id="inputCapacity" placeholder="Capacity">
+                    </div>
+                </div>
+                <!--<div class="form-group">-->
+                <!--<div class="col-lg-10"  style="margin-top: 10px">-->
+                <!--<input type="text" class="form-control" id="mountingHeight" placeholder="Mounting Height">-->
+                <!--</div>-->
+                <!--</div>-->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary save_btn" data-dismiss="modal"></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="/static/js/jquery-2.2.3.min.js" th:src="@{/js/jquery-3.3.1.min.js}" ></script>
+<script type="text/javascript" src="/static/js/bootstrap.min.js" th:src="@{/js/bootstrap.min.js}" ></script>
+<script type="text/javascript" src="/static/js/ion.rangeSlider.min.js" th:src="@{/js/ion.rangeSlider.min.js}" ></script>
+<script type="text/javascript" th:src="@{/js/zyxt.js}"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDK76FwuJJgha95vSjgK8lUG_oNegAZVC0&callback=initMap" async defer></script>
+<script type="text/javascript" th:inline="javascript">
+    /*<![CDATA[*/
+    $(function(){
+        var outputJson = /*[[${output}]]*/"";
+        console.log(outputJson);
+        window.onload = function(){
+            showOutput(outputJson);
+        };
+    });
+
+    /*]]>*/
+</script>
+</body>
+</html>

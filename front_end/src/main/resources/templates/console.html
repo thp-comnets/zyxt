@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title >Zyxt: A Network Planning Tool For Rural Wireless ISP's</title>
+    <!-- ... -->
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css" th:href="@{/css/bootstrap.min.css}" />
+    <link rel="stylesheet" href="/static/css/alertify/alertify.min.css" th:href="@{/css/alertify/alertify.min.css}" />
+    <link rel="stylesheet" href="/static/css/alertify/themes/default.min.css" th:href="@{/css/alertify/themes/default.min.css}" />
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <h1 class="text-center"><a th:href="@{/admin}">Zyxt: Admin Console</a></h1>
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="well">
+                    <h4 class="text-center"><b>Total Users:</b> <b th:text="${users.size()}">8</b></h4>
+                    <h3><b>Users & Jobs</b></h3>
+                    <table class="table table-hover table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th class="text-center">User ID</th>
+                                <th class="text-center">IP</th>
+                                <th class="text-center">Region</th>
+                                <th class="text-center">Country</th>
+                                <th class="text-center">Jobs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="user : ${users}">
+                                <td class="text-center" th:text="${user[0]}"></td>
+                                <td class="text-center" th:text="${user[1]}"></td>
+                                <td class="text-center" th:text="${user[3]}"></td>
+                                <td class="text-center">
+                                    <b th:text="${user[4]}"></b>
+                                    <img th:src="${user[5]}" style="max-width: 18px"  src=""/>
+                                </td>
+                                <td class="text-center">
+                                    <label style="margin-right: 5px"  th:each="job : ${#strings.arraySplit(user[2], ',')}" th:classappend="${#strings.arraySplit(job, ':')[1] == '1'} ? 'label-success' : 'label-warning'" class="label">
+                                        <a style="color: #FFFFFF" href="javascript:void(0)" th:attr="data-user-id=${user[0]}" class="job_btn" data-toggle="modal" data-target="#job_modal" th:text="${#strings.arraySplit(job, ':')[0]}"></a>
+                                    </label>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="job_modal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title job_modal_title">Modal title</h4>
+                </div>
+                <div class="modal-body">
+                    <ul>
+                        <li><a target="_blank" id="job_modal_link">Open This Job</a></li>
+                        <li><a href="javascript:void(0)" id="btn_delete">Delete This Job</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="/static/js/jquery-2.2.3.min.js" th:src="@{/js/jquery-3.3.1.min.js}" ></script>
+    <script type="text/javascript" src="/static/js/jquery.cookie.js" th:src="@{/js/jquery.cookie.js}"></script>
+    <script type="text/javascript" src="/static/js/bootstrap.min.js" th:src="@{/js/bootstrap.min.js}" ></script>
+    <script type="text/javascript" src="/static/js/alertify.min.js" th:src="@{/js/alertify.min.js}" ></script>
+    <script type="text/javascript" th:inline="javascript">
+        /*<![CDATA[*/
+        let requestUrl = /*[[@{/}]]*/"url";
+        $(".job_btn").click(function(){
+            $(".job_modal_title").html($(this).html());
+            $("#job_modal_link").attr("href", requestUrl+"?job_id="+$(this).html());
+            $("#btn_delete").attr("data-user-id", $(this).attr("data-user-id"));
+        });
+        let deleteRequestUrl = /*[[@{/admin/delete_job/}]]*/"url";;
+        $("#btn_delete").click(function(){
+            let thisBtn = $(this);
+            const job_id = $(".job_modal_title").html();
+            alertify.confirm('Cancelling/Deleting Job', 'Are you sure you want to cancel / Delete This job: ' + job_id,
+                function(){
+                    const user_id = $(thisBtn).attr("data-user-id");
+                    alert(job_id + "..." + user_id);
+                    deleteRequestUrl += job_id + "/" + user_id;
+                    $.post(deleteRequestUrl, function(response){
+                        console.log(response);
+                        if(response === true){
+                            alertify.alert('Job Response', 'Job has been deleted successfully', function(){
+                                window.location = requestUrl + "admin";
+                            });
+                        }
+
+                    });
+                },
+                function(){
+                    // alertify.error('Cancel')
+                }
+            );
+
+        });
+        /*]]>*/
+    </script>
+</body>
+</html>
