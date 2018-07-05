@@ -90,10 +90,6 @@
             <artifactId>opencsv</artifactId>
             <version>4.2</version>
         </dependency>
-        <dependency>
-            <groupId>com.maxmind.geoip2</groupId>
-            <artifactId>geoip2</artifactId>
-        </dependency>
 
 
     </dependencies>
