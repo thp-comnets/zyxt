@@ -432,11 +432,11 @@ def createPinnedEdgesFile(outputDir,inputEdges, indexMapping):
     with open(inputEdges, "r") as inputEdgesPinnedFile:
         for r in inputEdgesPinnedFile:
             allCoords = r.rstrip().split(",")
-            coord1 = coordinate( float(allCoords[0]), float(allCoords[1]), 0 )
+            coord1 = coordinate(float(allCoords[0]), float(allCoords[1]), 0)
             coord2 = coordinate(float(allCoords[2]), float(allCoords[3]), 0)
             tail = getNearestIndex(indexMapping, coord1)
             head = getNearestIndex(indexMapping, coord2)
-            pinnedOutputFiles.write(str(tail)+","+str(head)+"\n")
+            pinnedOutputFiles.write(str(tail) + "," + str(head) + "," + allCoords[4] + "," + allCoords[5] + "," + allCoords[6] + "," + allCoords[7] + "\n")
     inputEdgesPinnedFile.close()
     pinnedOutputFiles.close()
 
@@ -464,7 +464,7 @@ if __name__ == '__main__':
     inputSourceFileHandel.close()
 
     # create output folder
-    outputDir = "/home/cuda/output/new/"+inputSinks.split("/")[8].split(".")[0]
+    outputDir = "/home/cuda/Documents/output/"+inputSinks.split("/")[7].split(".")[0]
     try:
         os.mkdir(outputDir)
     except:
@@ -618,7 +618,7 @@ if __name__ == '__main__':
 
     if sys.argv[6] == "mcf":
         print "MCF Without Removal"
-        cmd = absolutePath+"/algorithms/MCF-RR/mcf "+outputDir+" "+removalFileForAlgo+" "+equipmentFilePath+" 1 10 98574"
+        cmd = absolutePath+"/algorithms/MCF-RR/mcf "+outputDir+" "+removalFileForAlgo+" "+equipmentFilePath+" 1 1 98574"
         print cmd
         p1 = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()

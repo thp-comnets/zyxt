@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div th:fragment="content">
+        <table class="table table-hover table-striped" th:if="${#lists.size(all_jobs) gt 0}">
+            <thead>
+                <tr>
+                    <th class='text-center'>Job ID</th>
+                    <th class='text-center'>Time</th>
+                    <th class='text-center'><i class='glyphicon glyphicon-flash'></i></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="job : ${all_jobs}" th:class="${job.status}" th:id="${job.jobId}">
+                    <td class="text-center"><a th:href="@{/} + '?job_id=' + ${job.jobId}"><b data-placement="top" data-html="true" class="show_tip" th:title="
+                    ${
+                        'Total Network Cost: <b>$' + job.totalNetworkCost + '</b><br/>' +
+                        'Total Towers: <b>' + job.totalTowers + '</b><br/>' +
+                        'Total Links: <b>' + job.totalLinks + '</b><br/>' +
+                        'Total Relays: <b>' + job.totalRelays + '</b><br/>' +
+                        '<b>Equipments: </b><br/>' +
+                        job.titleString
+                     }
+                    " th:text="${job.jobId}"></b></a></td>
+                    <td class="text-center" th:text="${job.time}"></td>
+                    <td class="text-center"><a href="javascript:void(0)" th:class="${job.action}" th:text="${job.action}"></a></td>
+                </tr>
+            </tbody>
+        </table>
+        <script type="text/javascript" th:inline="javascript">
+            /*<![CDATA[*/
+            $(".show_tip").tooltip();
+            /*]]>*/
+        </script>
+    </div>
+</body>
+</html>

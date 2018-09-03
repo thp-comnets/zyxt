@@ -57,8 +57,8 @@ public class ZyxtService {
         return jobHandlerMap;
     }
 
-    public ZyxtJobHandler handelZyxtInputJob(List<ZyxtInput> zyxtInputList, List<ZyxtEdges> zyxtEdgesList, List<Integer> selectedEquipments, int mountingHeight, int tradeOffValue) throws IOException, InterruptedException {
-        ZyxtJobHandler zyxtJobHandler = new ZyxtJobHandler(zyxtInputList, zyxtEdgesList, this.getSelectedEquipments(selectedEquipments), mountingHeight, tradeOffValue, this.mainZyxtDir);
+    public ZyxtJobHandler handelZyxtInputJob(List<ZyxtInput> zyxtInputList, List<ZyxtEdges> zyxtEdgesList, List<Equipment> selectedEquipments, int mountingHeight, int tradeOffValue) throws IOException, InterruptedException {
+        ZyxtJobHandler zyxtJobHandler = new ZyxtJobHandler(zyxtInputList, zyxtEdgesList, selectedEquipments, mountingHeight, tradeOffValue, this.mainZyxtDir);
         zyxtJobHandler.createInput();
         if(zyxtJobHandler.isStatus()){
             MapProcessing mapProcessing = new MapProcessing(zyxtInputList);
@@ -83,6 +83,51 @@ public class ZyxtService {
             return "No Job Exist For The Job Id: " + jobId;
         }
         return "TRUE";
+    }
+
+    public String fetchInputOfJobs(String jobId) throws IOException {
+        String jobInputPath = this.mainZyxtDir + "/customerNodes/" + jobId;
+        BufferedReader bufferedReader;
+        bufferedReader = new BufferedReader(new FileReader(new File(jobInputPath + "/newInputMap_"+jobId+".csv")));
+        String line;
+        ObjectMapper objectMapper = new ObjectMapper();
+        ArrayNode arrayNode = objectMapper.createArrayNode();
+        while ((line = bufferedReader.readLine()) != null) {
+            ObjectNode objectNode = objectMapper.createObjectNode();
+            objectNode.put("lat", Double.parseDouble(line.split(",")[0]));
+            objectNode.put("lng", Double.parseDouble(line.split(",")[1]));
+            objectNode.put("type", "sink");
+            objectNode.put("mountingHeight", Integer.parseInt(line.split(",")[4]));
+            objectNode.put("capacity", Integer.parseInt(line.split(",")[2]));
+            arrayNode.add(objectNode);
+        }
+        bufferedReader.close();
+        //reading source
+        bufferedReader = new BufferedReader(new FileReader(new File(jobInputPath + "/newInputMapSource_"+jobId+".csv")));
+        while ((line = bufferedReader.readLine()) != null) {
+            ObjectNode objectNode = objectMapper.createObjectNode();
+            objectNode.put("lat", Double.parseDouble(line.split(",")[0]));
+            objectNode.put("lng", Double.parseDouble(line.split(",")[1]));
+            objectNode.put("mountingHeight", Integer.parseInt(line.split(",")[2]));
+            objectNode.put("type", "source");
+            arrayNode.add(objectNode);
+        }
+        bufferedReader.close();
+        //reading lines
+        bufferedReader = new BufferedReader(new FileReader(new File(jobInputPath + "/newInputMapEdges_"+jobId+".csv")));
+        while ((line = bufferedReader.readLine()) != null) {
+            ObjectNode objectNode = objectMapper.createObjectNode();
+            objectNode.put("lat1", Double.parseDouble(line.split(",")[0]));
+            objectNode.put("lng1", Double.parseDouble(line.split(",")[1]));
+            objectNode.put("lat2", Double.parseDouble(line.split(",")[2]));
+            objectNode.put("lng2", Double.parseDouble(line.split(",")[3]));
+            objectNode.put("type", "line");
+            arrayNode.add(objectNode);
+        }
+        bufferedReader.close();
+
+        logger.info(arrayNode.toString());
+        return arrayNode.toString();
     }
 
     public boolean cancelAndDeleteJob(String job_id, String user_id) throws NoSuchFieldException, IllegalAccessException, IOException {
@@ -124,22 +169,17 @@ public class ZyxtService {
         }
     }
 
-    private List<Equipment> getSelectedEquipments(List<Integer> allSelectedEquipmentsIds){
-        List<Equipment> equipmentList = new ArrayList<>();
-        for(int id : allSelectedEquipmentsIds){
-            Equipment equipment = this.allEquipmentsMap.get(id);
-            equipmentList.add(equipment);
-        }
-        return equipmentList;
-    }
-
-    public List<Equipment> getAllEquipments(String jobId) throws IOException {
+    public List<Equipment> getAllEquipments(String jobId, String result) throws IOException {
         List<Equipment> allEquipments = new ArrayList<>();
         this.allEquipmentsMap.forEach((equipmentId, equipment) ->  {
             equipment.setSelected(true);
             allEquipments.add(equipment);
         });
-        if(jobId != null){
+        if(jobId != null && result.equals("TRUE")){
+            allEquipments.clear();
+            String jobEquipments = this.mainZyxtDir + "/customerNodes/" + jobId + "/newInputMapEquipments_"+jobId+".csv";
+            Map<Integer, Equipment> equipmentMap = Equipment.readEquipmentsFromFile(jobEquipments);
+            equipmentMap.forEach((equipmentId, equipment) -> allEquipments.add(equipment));
             for(Equipment eq : allEquipments){
                 if(!isEquipmentSelectedInJob(eq.getId(), jobId)){
                     eq.setSelected(false);
@@ -180,48 +220,36 @@ public class ZyxtService {
                 }
             }
         }
-        /*
-        if(!Files.exists(Paths.get(this.mainZyxtDir + "/customerNodes/"+jobId)) && !new File(this.mainZyxtDir + "/customerNodes/"+jobId+"/newInputMapEquipments_"+jobId+".csv").exists()){
-            res = true;
-        }else{
-            BufferedReader bufferedReader = new BufferedReader(new FileReader(new File(this.mainZyxtDir + "/customerNodes/"+jobId+"/newInputMapEquipments_"+jobId+".csv")));
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                if(Integer.parseInt(line.split(",")[4]) == equipmentId){
-                    res = true;
-                    break;
-                }
-            }
-        }*/
-
         return res;
     }
 
-    public String checkStatusesOfAllJobs(List<String> allJobs) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        ArrayNode arrayNode = objectMapper.createArrayNode();
+
+    public List<Job> getAllJobsWithStatus(List<String> allJobs) throws IOException {
+        List<Job> allJobsWithStatus = new ArrayList<>();
         if(allJobs != null){
             for (String job : allJobs) {
-                ObjectNode objectNode = arrayNode.addObject();
+                Job job1 = new Job();
                 String jobDir = this.mainOutputDir + "/newInputMap_" + job;
-                objectNode.put("job_id", job);
-                objectNode.put("time", " - ");
-                objectNode.put("status", "warning");
-                objectNode.put("action", "Cancel");
+                job1.setJobId(job);
+                job1.setTime(" - ");
+                job1.setAction("Cancel");
+                job1.setStatus("warning");
                 if (Files.exists(Paths.get(jobDir)) && Files.isDirectory(Paths.get(jobDir))) {
                     if (new File(jobDir + "/acknowledged.txt").exists()) {
                         List<String> allLines = getLinesOfOutputFile(job);
                         Double timeTakes = Double.parseDouble(allLines.get(4).split(" ")[2]) / 60;
                         DecimalFormat df = new DecimalFormat("#.#");
-                        objectNode.put("time", df.format(timeTakes)+" m");
-                        objectNode.put("status", "success");
-                        objectNode.put("action", "Delete");
+                        job1.setTime(df.format(timeTakes)+" m");
+                        job1.setStatus("success");
+                        job1.setAction("Delete");
+                        Job.parseAndSetCostsOfJob(job1, this.getJsonNodeOfFinalOutputJson(job), this.mainZyxtDir);
                     }
                 }
+                allJobsWithStatus.add(job1);
             }
-            logger.info(arrayNode.toString());
+
         }
-        return arrayNode.toString();
+        return allJobsWithStatus;
     }
 
 
@@ -267,9 +295,24 @@ public class ZyxtService {
         String content = new String ( Files.readAllBytes(outputFile.toPath()) );
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode = objectMapper.readValue(content, JsonNode.class);
-
         return jsonNode.toString();
+    }
 
+    private JsonNode getJsonNodeOfFinalOutputJson(String job_id) throws IOException {
+        List<String> allLines = getLinesOfOutputFile(job_id);
+        if(allLines == null){
+            return null;
+        }
+        for(String l : allLines){
+            logger.info(l);
+        }
+        logger.info("*****************");
+        logger.info(allLines.get(2));
+        File outputFile = returnFinalOutputJsonFile(allLines.get(2));
+
+        String content = new String ( Files.readAllBytes(outputFile.toPath()) );
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readValue(content, JsonNode.class);
     }
 
     private List<String> getLinesOfOutputFile(String jobId) throws IOException {
@@ -333,12 +376,13 @@ public class ZyxtService {
         File userInputFile = new File(this.mainZyxtDir + "/all_users.csv");
         CSVReader csvReader = new CSVReader(new FileReader(userInputFile));
         List<String[]> csvBody = csvReader.readAll();
+        List<String> allJobs = new ArrayList<>();
         for ( String[] row : csvBody) {
            if(row[0].equals(userId) && !row[2].equals("")){
-               return Arrays.asList(row[2].split(","));
+               allJobs = Arrays.asList(row[2].split(","));
            }
         }
-        return null;
+        return allJobs;
     }
 
     public void saveNewUser(String userId, HttpServletRequest request) throws IOException {
@@ -349,7 +393,7 @@ public class ZyxtService {
             if (ip_address == null || "".equals(ip_address)) {
                 ip_address = request.getRemoteAddr();
             }
-            ip_address = "91.230.41.202";
+//            ip_address = "91.230.41.202";
         }
         RestTemplate restTemplate = new RestTemplate();
         String resourceUrl = "http://api.ipstack.com/"+ip_address+"?access_key=32d455e835b3f69dd6bcc4b69efc58ab&format=1";

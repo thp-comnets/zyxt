@@ -1,0 +1,10 @@
+airFiber 5,1200.0,100.0,1998.0,1,true
+airFiber 2X,500.0,200.0,1056.0,2,true
+NanoBeam M5-16,150.0,10.0,134.0,3,true
+PowerBeam M2-400,150.0,20.0,158.0,4,true
+PowerBeam M5-400,150.0,25.0,190.0,5,true
+PowerBeam M5-620,150.0,30.0,398.0,6,true
+PowerBeam 5AC-300,450.0,20.0,198.0,7,true
+PowerBeam 5AC-620,450.0,30.0,458.0,8,true
+NanoStation locoM2,150.0,5.0,98.0,9,true
+New Device,10.0,10.0,50.0,10,true

@@ -9,6 +9,7 @@
 #include "json.hpp"
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <random>
 #include <iostream>
 #include <climits>
 #include <cfloat>

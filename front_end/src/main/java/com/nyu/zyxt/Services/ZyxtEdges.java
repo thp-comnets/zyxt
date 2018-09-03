@@ -5,6 +5,15 @@ public class ZyxtEdges {
     private double lng1;
     private double lat2;
     private double lng2;
+    private Equipment device;
+
+    public Equipment getDevice() {
+        return device;
+    }
+
+    public void setDevice(Equipment device) {
+        this.device = device;
+    }
 
     public double getLat1() {
         return lat1;

@@ -64,7 +64,13 @@ double MCFRR::calculateEquipmentCostOfNetwork(const SimpleMinCostFlow &minCostFl
     double totalEquipmentCost = 0.0;
     for(int i = 0; i < minCostFlow.NumArcs(); i++) {
         if (minCostFlow.Flow(i) > 1) {
-            Equipment equipment = this->getBestDevice(this->allCoordinates[ this->networkNodes[minCostFlow.Tail(i)] ], this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ], minCostFlow.Flow(i));
+            Equipment equipment;
+            if( this->pinnedEdges.count( to_string( this->networkNodes[ minCostFlow.Tail(i)] ) + "," + to_string( this->networkNodes[minCostFlow.Head(i)] ) ) > 0 ){
+                equipment = this->pinnedEdges[ to_string( this->networkNodes[ minCostFlow.Tail(i)] ) + "," + to_string( this->networkNodes[minCostFlow.Head(i)] ) ].equipment;
+            }else{
+                equipment = this->getBestDevice(this->allCoordinates[this->networkNodes[minCostFlow.Tail(i)]], this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ], minCostFlow.Flow(i));
+            }
+            //Equipment equipment = this->getBestDevice(this->allCoordinates[ this->networkNodes[minCostFlow.Tail(i)] ], this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ], minCostFlow.Flow(i));
             totalEquipmentCost += equipment.totalPairCost;
         }
     }
@@ -210,14 +216,22 @@ void MCFRR::initializePreliminaryData() {
         newEdge.tail = this->getIndexFromNetworkNodesVector(stol(token)); //doing this to get the local index relative to the list of selected nodes after node removal algorithm
         getline(ss, token, ',');
         newEdge.head = this->getIndexFromNetworkNodesVector(stol(token)); //doing this to get the local index relative to the list of selected nodes after node removal algorithm
-        this->pinnedEdges[line] = newEdge;
-        this->edgesKept[line] = newEdge;
+        getline(ss, token, ',');
+        newEdge.equipment.throughput = stoi(token);
+        getline(ss, token, ',');
+        newEdge.equipment.range = stoi(token);
+        getline(ss, token, ',');
+        newEdge.equipment.totalPairCost = stoi(token);
+        getline(ss, token, ',');
+        newEdge.equipment.id = stoi(token);
+        this->pinnedEdges[to_string(newEdge.tail)+","+to_string(newEdge.head)] = newEdge;
+        //this->edgesKept[to_string(newEdge.tail)+","+to_string(newEdge.head)] = newEdge;
     }
 //     for (auto const& x : this->pinnedEdges)
 // {
 //     std::cout << x.first  // string (key)
 //               << ':'
-//               << x.second.tail << "," << x.second.head// string's value
+//               << x.second.tail << "," << x.second.head << "," << x.second.equipment.totalPairCost // string's value
 //               << std::endl ;
 // }
 //     exit(1);
@@ -266,7 +280,12 @@ void MCFRR::writeJSONOutput(const SimpleMinCostFlow &minCostFlow, int iter) {
     for(int i = 0; i < minCostFlow.NumArcs(); i++){
         if(minCostFlow.Flow(i) > 0){
             Edge edge;
-            Equipment equipment = this->getBestDevice(this->allCoordinates[this->networkNodes[minCostFlow.Tail(i)]], this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ], minCostFlow.Flow(i));
+            Equipment equipment;
+            if( this->pinnedEdges.count( to_string( this->networkNodes[ minCostFlow.Tail(i)] ) + "," + to_string( this->networkNodes[minCostFlow.Head(i)] ) ) > 0 ){
+                equipment = this->pinnedEdges[ to_string( this->networkNodes[ minCostFlow.Tail(i)] ) + "," + to_string( this->networkNodes[minCostFlow.Head(i)] ) ].equipment;
+            }else{
+                equipment = this->getBestDevice(this->allCoordinates[this->networkNodes[minCostFlow.Tail(i)]], this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ], minCostFlow.Flow(i));
+            }
             output["edges"][outputCounter]["nodes"] = json::array({this->networkNodes[minCostFlow.Tail(i)], this->networkNodes[minCostFlow.Head(i)]});
             //output["edges"][outputCounter]["coordinates"] = json::array({this->allCoordinates[ this->networkNodes[minCostFlow.Tail(i)] ].lat,this->allCoordinates[ this->networkNodes[minCostFlow.Tail(i)] ].lng, this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ].lat, this->allCoordinates[ this->networkNodes[minCostFlow.Head(i)] ].lng });
             output["edges"][outputCounter]["edgeProperty"]["unitCost"] = minCostFlow.UnitCost(i);
@@ -412,8 +431,10 @@ void MCFRR::doFurtherOptimization(bool onlyEdgesWithLeafNodes) {
             unsigned long long int totalNodes = (unsigned long long int) this->rows * this->cols;
             for (long i = 0; i < this->networkNodes.size(); i++) {
                 for (long j = 0; j < this->networkNodes.size(); j++) {
-                    if(this->pinnedEdges.count(to_string(i)+","+to_string(j)) > 0){
-                        minCostFlow.AddArcWithCapacityAndUnitCost(i,j,INT_MAX, 0);
+                    if(this->pinnedEdges.count(to_string(this->networkNodes[i])+","+to_string(this->networkNodes[j])) > 0){
+                        cout << i << ":" << j << endl;
+                        int pinnedEdgeCapacity = (this->pinnedEdges[to_string(this->networkNodes[i])+","+to_string(this->networkNodes[j])].equipment.throughput == 0) ? INT_MAX : this->pinnedEdges[to_string(this->networkNodes[i])+","+to_string(this->networkNodes[j])].equipment.throughput;
+                        minCostFlow.AddArcWithCapacityAndUnitCost(i,j,pinnedEdgeCapacity, 0);
                     }else if (getBit(this->networkNodes[i] * totalNodes + this->networkNodes[j])) {
                         if(i == j){
                             continue;
@@ -424,7 +445,7 @@ void MCFRR::doFurtherOptimization(bool onlyEdgesWithLeafNodes) {
                             unitCost = 0;
                         } else if (this->currentSolution.solutionEdges.count(to_string(i) + "," + to_string(j)) > 0 && !this->currentSolution.solutionEdges[to_string(i) + "," + to_string(j)].isChecked) {
                             Edge existingEdge = this->currentSolution.solutionEdges[to_string(i) + "," + to_string(j)]; //solutionEdgeMap Hold the solution of previous iteration.
-                            if (existingEdge.passedFlow > 5) {
+                            if (existingEdge.capacity > 5) {
                                 this->edgesKept[to_string(i) + "," + to_string(j)] = existingEdge; //Edges Kept
                                 unitCost = 0;
                             }
@@ -443,6 +464,7 @@ void MCFRR::doFurtherOptimization(bool onlyEdgesWithLeafNodes) {
             cout << "Checked For: " << it->first << " :: " << it->second.passedFlow << endl;
             if (solveStatus == SimpleMinCostFlow::OPTIMAL) {
                 double equipmentCost = this->calculateEquipmentCostOfNetwork(minCostFlow);
+            
                 if (equipmentCost < this->currentSolution.totalEquipmentCost && this->isNetworkHasPinnedEdges(minCostFlow)) { //if network does not have pinned edges then ignore it even if it has lower cost in phase 2
                     costCompFile << time(0) << "," << equipmentCost << ",l," << it->second.passedFlow << endl;
                     isFurtherOptimization = true;
@@ -497,9 +519,10 @@ int MCFRR::solveInIterations(unsigned long randomSeed) {
         unsigned long long int totalNodes = (unsigned long long int)this->rows * this->cols;
         for(long i = 0; i < this->networkNodes.size(); i++) {
             for (long j = 0; j < this->networkNodes.size(); j++) {
-                if(this->pinnedEdges.count(to_string(i)+","+to_string(j)) > 0){
+                if(this->pinnedEdges.count(to_string(this->networkNodes[i])+","+to_string(this->networkNodes[j])) > 0){
                     cout << i << ":" << j << endl;
-                    minCostFlow.AddArcWithCapacityAndUnitCost(i,j,INT_MAX, 0);
+                    int pinnedEdgeCapacity = (this->pinnedEdges[to_string(this->networkNodes[i])+","+to_string(this->networkNodes[j])].equipment.throughput == 0) ? INT_MAX : this->pinnedEdges[to_string(this->networkNodes[i])+","+to_string(this->networkNodes[j])].equipment.throughput;
+                    minCostFlow.AddArcWithCapacityAndUnitCost(i,j,pinnedEdgeCapacity, 0);
                 }else if(getBit(this->networkNodes[i] * totalNodes + this->networkNodes[j])){
                     if(i == j){
                         continue;

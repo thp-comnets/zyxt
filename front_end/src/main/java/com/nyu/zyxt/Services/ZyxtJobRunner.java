@@ -2,11 +2,14 @@ package com.nyu.zyxt.Services;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.util.concurrent.BlockingQueue;
@@ -15,10 +18,8 @@ import java.util.concurrent.BlockingQueue;
 public class ZyxtJobRunner {
 
     private BlockingQueue<ZyxtJobHandler> queue;
-    private Runtime runtime;
-    private Process process;
-    private BufferedReader bufferedReader;
-    private String line;
+    @Value("${mainOutputDir}")
+    private String mainOutputDir;
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     public void setQueue(BlockingQueue<ZyxtJobHandler> queue) {
@@ -28,7 +29,6 @@ public class ZyxtJobRunner {
     @PostConstruct
     public void init(){
         logger.info("Init ZyxtJobRunner Runtime");
-        this.runtime = Runtime.getRuntime();
     }
 
     @Async
@@ -39,36 +39,29 @@ public class ZyxtJobRunner {
                 ZyxtJobHandler zyxtJobHandler = this.queue.take();
                 String command = zyxtJobHandler.getCommand();
                 logger.info("In Runner, New Job Received: " + command);
-                String[] cmd = {
-                        "/bin/bash",
-                        "-c",
-                        command
-                };
-                this.process = this.runtime.exec(cmd);
-                logger.info("After Execution Of Script");
-                zyxtJobHandler.setJobProcess(this.process);
-                /********PID************/
-                Field f = this.process.getClass().getDeclaredField("pid");
+                ProcessBuilder processBuilder = new ProcessBuilder();
+                processBuilder.command("sh", "-c", command);
+                processBuilder.directory(new File(System.getProperty("user.home")));
+                new File(this.mainOutputDir + "/newInputMap_"+zyxtJobHandler.getJobId()).mkdir();
+                File errorFile = new File(this.mainOutputDir + "/newInputMap_"+zyxtJobHandler.getJobId()+"/error.txt");
+                errorFile.createNewFile();
+                File outputFile = new File(this.mainOutputDir + "/newInputMap_"+zyxtJobHandler.getJobId()+"/output.txt");
+                outputFile.createNewFile();
+                processBuilder.redirectError(errorFile);
+                processBuilder.redirectOutput(outputFile);
+                Process process = processBuilder.start();
+                zyxtJobHandler.setJobProcess(process);
+                Field f = process.getClass().getDeclaredField("pid");
                 f.setAccessible(true);
-                long pid = f.getLong(this.process);
+                long pid = f.getLong(process);
                 f.setAccessible(false);
-
-                /**********************/
                 logger.info("PID is: " + Long.toString(pid));
-                this.bufferedReader = new BufferedReader(new InputStreamReader(this.process.getInputStream()));
-                while ((line = this.bufferedReader.readLine()) != null) {
-                    System.out.println(line);
-                }
-                System.out.println("After End Of Output");
-                System.out.flush();
-                this.process.waitFor();
-                logger.info("Map Processing Done With Exit Value: " + Integer.toString(this.process.exitValue()) + "....");
+                int exitCode = process.waitFor();
+                logger.info("Map Processing Done With Exit Value: " + exitCode + "....");
             }
         }catch (Exception ex){
+            logger.error("This is error in runner");
             logger.error(ex.getMessage());
         }
-
-//        String command = "python "+zyxtDir+"/processMapsWithRescaling.py " + zyxtDir + "/customerNodes/sampleMapSinks.csv " + zyxtDir + "/customerNodes/sampleMapSource.csv 400 n 0 fcnf /home/cuda/Dropbox/wisp_planning_tool/zyxt";
-//        System.out.println(command);
     }
 }

@@ -32,24 +32,21 @@ public class HomeController {
 
     @GetMapping(value = "/")
     public String home(Model model, @RequestParam(value = "job_id", required = false)String job_id,
-                       @CookieValue(value = "job_id", required = false) String cookieJobId,
                        @CookieValue(value = "user_id", required = false) String userId,
                        HttpServletResponse response, HttpServletRequest request
                        ) throws IOException {
         logger.info(userId);
+        String result = null;
         if(job_id != null){
-            String result = zyxtService.checkValidityOfJob(job_id);
+            result = zyxtService.checkValidityOfJob(job_id);
             if (result.equals("TRUE")){
                 String jobOutput = zyxtService.processOutput(job_id);
                 model.addAttribute("default_mounting_height", zyxtService.getDefaultMountingHeightOfJob(job_id));
                 model.addAttribute("output", jobOutput);
-                //return "output";
+            }else{
+                model.addAttribute("input", zyxtService.fetchInputOfJobs(job_id));
             }
             model.addAttribute("result", result);
-        }
-        if(userId != null){
-            List<String> allJobs = zyxtService.getAllJobs(userId);//Arrays.asList(new String(Base64.getDecoder().decode(cookieJobId)).split(","));
-            model.addAttribute("all_jobs", zyxtService.checkStatusesOfAllJobs(allJobs));
         }
         if(userId == null){
             String newUserId = RandomStringUtils.randomNumeric(6);
@@ -58,9 +55,16 @@ public class HomeController {
             response.addCookie(cookie);
             zyxtService.saveNewUser(newUserId, request);
         }
-        List<Equipment> allEquipments = zyxtService.getAllEquipments(job_id);
+        List<Equipment> allEquipments = zyxtService.getAllEquipments(job_id, result);
         model.addAttribute("allEquipments", allEquipments);
         return "home";
+    }
+
+    @PostMapping(value = "/get_all_jobs")
+    public String getAllJobs(@CookieValue(value = "user_id", required = false) String userId, Model model) throws IOException {
+        List<String> allJobs = zyxtService.getAllJobs(userId);
+        model.addAttribute("all_jobs", zyxtService.getAllJobsWithStatus(allJobs));
+        return "all_jobs :: content";
     }
 
     @PostMapping(value = "/submit_job")
@@ -81,22 +85,9 @@ public class HomeController {
         }
         List<ZyxtInput> zyxtInputList = objectMapper.readValue(data, new TypeReference<List<ZyxtInput>>(){});
         List<ZyxtEdges> zyxtEdgesList = objectMapper.readValue(dataEdges, new TypeReference<List<ZyxtEdges>>(){});
-        List<Integer> selectedEquipments = (List<Integer>) objectMapper.readValue(dataEquipments, List.class);
+        List<Equipment> selectedEquipments = objectMapper.readValue(dataEquipments, new TypeReference<List<Equipment>>(){});
 
         ZyxtJobHandler zyxtJobHandler = zyxtService.handelZyxtInputJob(zyxtInputList, zyxtEdgesList, selectedEquipments, mountingHeight, tradeOffValue);
-//        String allJobIds;
-//        if(!cookieJobId.equals("")){
-//            allJobIds = new String(Base64.getDecoder().decode(cookieJobId));
-//            allJobIds += "," + zyxtJobHandler.getJobId();
-//        }else{
-//            allJobIds = zyxtJobHandler.getJobId();
-//        }
-//        logger.info("Final Cookie Value: " + allJobIds);
-//        String encoded = Base64.getEncoder().encodeToString(allJobIds.getBytes());
-//        logger.info("Encoded String: " + encoded);
-//        Cookie cookie = new Cookie("job_id", encoded);
-//        cookie.setMaxAge(31556952);
-//        response.addCookie(cookie);
         if(zyxtJobHandler.isStatus()){
             zyxtService.insertNewJob(cookieUserId, zyxtJobHandler.getJobId());
         }
@@ -123,8 +114,6 @@ public class HomeController {
     @ResponseBody
     public boolean cancelJob(@PathVariable String job_id,  @PathVariable String user_id) throws NoSuchFieldException, IllegalAccessException, IOException {
         return this.zyxtService.cancelAndDeleteJob(job_id, user_id);
-//        return true;
-
     }
 
     @GetMapping(value = "/get_img")

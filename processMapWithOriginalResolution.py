@@ -423,7 +423,7 @@ if __name__ == '__main__':
     equipmentFilePath = sys.argv[9]
 
     # create output folder
-    outputDir = "/home/cuda/output/new/" + inputSinks.split("/")[8].split(".")[0]
+    outputDir = "/home/cuda/Documents/output/" + inputSinks.split("/")[7].split(".")[0]
     try:
         os.mkdir(outputDir)
     except:

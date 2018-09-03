@@ -135,13 +135,15 @@ public class ZyxtJobHandler {
 
         for(ZyxtEdges zyxtEdge : this.zyxtEdgesList){
             edgesContent.append(Double.toString(zyxtEdge.getLat1())).append(",").append(Double.toString(zyxtEdge.getLng1())).append(",").
-                    append(Double.toString(zyxtEdge.getLat2())).append(",").append(Double.toString(zyxtEdge.getLng2())).append("\n");
+                    append(Double.toString(zyxtEdge.getLat2())).append(",").append(Double.toString(zyxtEdge.getLng2())).append(",").append(Double.toString(zyxtEdge.getDevice().getThroughput())).
+                    append(",").append(Double.toString(zyxtEdge.getDevice().getRange())).append(",").append(Double.toString(zyxtEdge.getDevice().getCost())).
+                    append(",").append(Double.toString(zyxtEdge.getDevice().getId())).append("\n");
         }
 
         for(Equipment e : selectedEquipments){
             equipmentsContent.append(e.getName()).append(",").append(Double.toString(e.getThroughput())).append(",").
                     append(Double.toString(e.getRange())).append(",").append(Double.toString(e.getCost())).append(",").
-                    append(Integer.toString(e.getId())).append("\n");
+                    append(Integer.toString(e.getId())).append(",").append(Boolean.toString(e.isSelected())).append("\n");
         }
 
         sinkWriter.write(sinkContent.toString());

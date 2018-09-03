@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/css/bootstrap.min.css" th:href="@{/css/bootstrap.min.css}" />
     <link rel="stylesheet" href="/static/css/ion.rangeSlider.css" th:href="@{/css/ion.rangeSlider.css}" />
     <link rel="stylesheet" href="/static/css/ion.rangeSlider.skinHTML5.css" th:href="@{/css/ion.rangeSlider.skinHTML5.css}" />
+    <link href="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/css/bootstrap-editable.css" rel="stylesheet"/>
     <link rel="stylesheet" href="/static/css/alertify/alertify.min.css" th:href="@{/css/alertify/alertify.min.css}" />
     <link rel="stylesheet" href="/static/css/alertify/themes/default.min.css" th:href="@{/css/alertify/themes/default.min.css}" />
     <!--&lt;!&ndash; Font Awesome &ndash;&gt;-->
@@ -20,6 +21,15 @@
             width: 20%;
             height: 30px;
             top:7px !important;
+        }
+        footer{
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        footer a{
+            color: white !important;
         }
 
     </style>
@@ -37,10 +47,10 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-2">
-                <div class="well" style="height: 850px; overflow: auto">
+                <div class="well" style="height: 815px; overflow: auto">
                     <ul class="nav nav-tabs">
                         <li class="active"><a href="#sites" data-toggle="tab" aria-expanded="true">Sites</a></li>
-                        <li class=""><a href="#devices" data-toggle="tab" aria-expanded="false">Equipments</a></li>
+                        <li class=""><a href="#devices" data-toggle="tab" aria-expanded="false">Equipment</a></li>
                     </ul>
                     <div id="myTabContent" class="tab-content">
                         <div class="tab-pane fade active in" id="sites">
@@ -52,37 +62,55 @@
                             <br/>
                             <div class="row">
                                 <div class="col-md-12">
-                                    <ul class="list-group show_tip" data-toggle="modal" title="Click to Edit" data-target="#default_cap_modal">
-                                        <li class="list-group-item">Default Bandwidth: <b id="sink_cap"> 5 MBits/s</b></li>
-                                        <li class="list-group-item">Default Mounting Height: <b id="mounting_default_html"> 10 m</b></li>
+                                    <ul class="list-group show_tip">
+                                        <li class="list-group-item">
+                                            Default Bandwidth: <b id="sink_cap" title="Click To Edit">5</b> MBits/s
+                                            <input type="hidden" id="sinkCapacity" value="5">
+                                        </li>
+                                        <li class="list-group-item">
+                                            Default Mounting Height: <b id="mounting_default_html">10</b> m
+                                            <input type="hidden" id="mountingDefaultInput" value="10" >
+                                        </li>
                                     </ul>
                                 </div>
                             </div>
 
-                            <a href="javascript:void(0)" data-toggle="modal" data-target="#location_data">Enter Sites Data Manually</a>
+                            <a href="javascript:void(0)" data-toggle="modal" data-target="#location_data">Add Sites</a>
                             <hr/>
                             <h5><b>Links</b></h5>
                             <div class="row">
                                 <div class="col-md-12"><button class="btn btn-primary btn-sm btn-block add_link m_btn">Add Link</button></div>
                             </div>
                             <hr/>
-                            <h5><b>Accuracy / Speed Trade-off <span data-placement="top" title="Solving Time of a Problem" class="show_tip glyphicon glyphicon-question-sign"></span></b></h5>
+                            <h5><b>Accuracy / Speed Trade-off <span data-placement="top" data-html="true" title="<b>Accuracy</b>:
+                            <br/>In this mode, we do not apply re-scaling to the raw elevation data, and use every available pixel as a potential tower location.
+                             The expected ETA is above 6 h/
+                            <br/><b>Speed:</b>
+                            <br/>In this mode, we apply re-scaling to the raw elevation data as well as heuristics to sparsity the possible tower locations across the map.
+                            The result will contain a certain accuracy error, but the ETA is reduced to around 15 min." class="show_tip glyphicon glyphicon-question-sign"></span></b></h5>
                             <span class="pull-left">6Hrs</span>
                             <span class="pull-right"><20Min</span>
                             <input type="text" id="trade_of_slider" name="trade_of" value="100" />
 
                         </div>
                         <div class="tab-pane fade" id="devices">
-                            <h5><b>Selected Equipments</b></h5>
+                            <h5><b>Selected Equipment</b>
+                                <a class="pull-right btn btn-xs btn-primary" href="javascript:void(0)" data-toggle="modal" data-target="#update_equipment_model"><i class="glyphicon glyphicon-plus"></i></a>
+                            </h5>
                             <div id="selected_equipments">
-                                <ul class="list-group eq_group">
+                                <ul class="list-group eq_group" id="default_equipment_set">
                                     <li class="list-group-item eq_group_item" th:each="equipment : ${allEquipments}" th:attr="eq-close='closed',eq-id=${equipment.id}">
                                         <b class="pull-left" th:text="${equipment.name}">airFiber 5</b>
-                                        <input type="checkbox" class="pull-right" th:value="${equipment.id}" th:checked="${equipment.selected}"/><br/>
+                                        <input type="checkbox" class="pull-right device_select_check" th:name="${'equipment['+equipment.id+'][id]'}" th:value="${equipment.id}" th:checked="${equipment.selected}"/>
+                                        <input type="hidden" th:name="${'equipment['+equipment.id+'][throughput]'}"  th:value="${equipment.throughput}"/>
+                                        <input type="hidden" th:value="${equipment.name}" />
+                                        <input type="hidden" th:name="${'equipment['+equipment.id+'][range]'}"  th:value="${equipment.range}"/>
+                                        <input type="hidden" th:name="${'equipment['+equipment.id+'][cost]'}"  th:value="${equipment.cost}"/>
+                                        <br/>
                                         <ul class="list-inline">
-                                            <li><i th:text="${#numbers.formatDecimal(equipment.throughput,0,0) + ' MBits/s'}">1200 MBits/s</i></li>
-                                            <li><i th:text="${#numbers.formatDecimal(equipment.range,0,0) + 'KM'}">100KM</i></li>
-                                            <li><i th:text="${'$' + #numbers.formatDecimal(equipment.cost,0,0)}">$1998</i></li>
+                                            <li><i><B><span class="throughput_edit" th:text="${#numbers.formatDecimal(equipment.throughput,0,0)}"></span></B> MBits/s</i></li>
+                                            <li><i><B><span class="range_edit" th:text="${#numbers.formatDecimal(equipment.range,0,0)}"></span></B>KM</i></li>
+                                            <li><i>$<B><span class="cost_edit" th:text="${#numbers.formatDecimal(equipment.cost,0,0)}"></span></B></i></li>
                                         </ul>
                                     </li>
                                 </ul>
@@ -94,47 +122,55 @@
                     <section id="output">
 
                     </section>
-                    <br/>
                     <section id="old_jobs" style="margin-top: 20px">
-                        <span>
-
-                        </span>
+                        <span></span>
                     </section>
 
                 </div>
             </div>
             <div class="col-md-10">
                 <div class="well">
-                    <div class="pull-left">
-                        <ul class="list-inline" id="networkSummary">
-
-                        </ul>
-                    </div>
-                    <div class="pull-left i_e_btn">
-                        <div class="btn-group">
-                            <a href="#" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#import_model">Import</a>
-                            <div class="btn-group">
-                                <a href="#" class="btn btn-primary btn-xs dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
-                                    Export
-                                    <span class="caret"></span>
-                                </a>
-                                <ul class="dropdown-menu">
-                                    <li><a href="javascript:void(0)" id="export_img" class="export_btn">PNG</a></li>
-                                    <li><a href="javascript:void(0)" id="export_zyxt" class="export_btn">JSON</a></li>
-                                </ul>
+                    <div class="row">
+                        <div class="col-md-2" style="width: 10%">
+                            <div class=" i_e_btn">
+                                <div class="btn-group">
+                                    <a href="#" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#import_model">Import</a>
+                                    <div class="btn-group">
+                                        <a href="#" class="btn btn-primary btn-xs dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                            Export
+                                            <span class="caret"></span>
+                                        </a>
+                                        <ul class="dropdown-menu">
+                                            <li><a href="javascript:void(0)" id="export_img" class="export_btn">PNG</a></li>
+                                            <li><a href="javascript:void(0)" id="export_zyxt" class="export_btn">JSON</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                        <div class="col-md-7" style="width: 65%">
+                            <ul class="list-inline text-center" id="networkSummary">
+
+                            </ul>
+                        </div>
+                        <div class="col-md-3">
+                            <ul class="list-inline pull-right">
+                                <li>Source <img th:src="@{/img/source.png}"></li>
+                                <li>Sink <img th:src="@{/img/sink.png}"></li>
+                                <li>Relays <img th:src="@{/img/intermediate.png}"></li>
+                                <li>Edge <img style="max-width:25px" th:src="@{/img/edgeLegend.png}" /></li>
+                            </ul>
+                        </div>
                     </div>
-                    <div class="pull-right">
-                        <ul class="list-inline">
-                            <li><b>Legends:</b></li>
-                            <li>Source <img th:src="@{/img/source.png}"></li>
-                            <li>Sink <img th:src="@{/img/sink.png}"></li>
-                            <li>Relay <img th:src="@{/img/intermediate.png}"></li>
-                        </ul>
-                    </div>
+
+                    <!--<div class="pull-left">-->
+
+                    <!--</div>-->
+                    <!--<div class="pull-right">-->
+
+                    <!--</div>-->
                     <input id="pac-input" class="hide" type="text" placeholder="Search Place">
-                    <div id="map" style="width: 100%;min-height: 775px">
+                    <div id="map" style="width: 100%;min-height: 740px">
 
                     </div>
                 </div>
@@ -147,6 +183,25 @@
             <!--</div>-->
         <!--</div>-->
     </div>
+
+    <footer class="bg-primary">
+        <div class="container-fluid">
+            <div class="row" style="margin-top: 5px">
+
+                <div class="col-md-6 text-right">
+                    <ul class="list-inline">
+                        <li><a href="#">Contact</a></li>
+                        <li><a target="_blank" href="https://github.com/thp-comnets/zyxt">Contribute</a></li>
+                        <li><a target="_blank" href="https://docs.google.com/document/d/1QcP4xsXmYzy7gApgLU1yYFq4ea20lvGsrTmj0VTkxJo/edit?usp=sharing">Help</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-6 text-right">
+                    <b>New York University Abu Dhabi</b>
+                </div>
+            </div>
+
+        </div>
+    </footer>
     <div class="modal fade" id="time_approx_modal" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -179,21 +234,21 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title-location">Locations Data</h4>
+                    <h4 class="modal-title-location">Add Sites</h4>
                 </div>
                 <div class="modal-body" style="overflow: auto">
                     <div class="form-group">
                         <label>Source (Optional)</label>
                         <div class="col-md-12">
                             <input type="text"  class="form-control source"/>
-                            <span class="help-block">Format: lat, lng, towerHeight</span>
+                            <span class="help-block">Format: lat, lng, towerHeight<br/>e.g. 39.1234,-125.54, 10</span>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Customer Sites (Optional)</label>
                         <div class="col-md-12">
                             <textarea class="form-control sinks" rows="5"></textarea>
-                            <span class="help-block">Format: lat, lng, demand, towerHeight => One Site Per Line</span>
+                            <span class="help-block">Format: lat, lng, demand, towerHeight (One Site Per Line) e.g. <br/>39.6789,-125.98, 5,10<br/>39.1234,-125.54, 8,10<br/>...</span>
                         </div>
                     </div>
                 </div>
@@ -212,15 +267,15 @@
                 </div>
                 <div class="modal-body" style="overflow: auto">
                     <div class="form-group">
-                        <label class="col-lg-2 control-label" for="inputCapacity">Bandwidth</label>
-                        <div class="col-lg-10">
-                            <input type="number" class="form-control" id="inputCapacity" placeholder="Bandwidth">
+                        <label class="col-lg-4 control-label" style="margin-top: 10px" for="inputCapacity">Bandwidth (MBits / s)</label>
+                        <div class="col-lg-8">
+                            <input type="number" class="form-control" id="inputCapacity" placeholder="Bandwidth (MBits / s)">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="col-lg-2 control-label" for="mountingHeight">Mounting Height</label>
-                        <div class="col-lg-10"  style="margin-top: 10px">
-                            <input type="text" class="form-control" id="mountingHeight" placeholder="Mounting Height">
+                        <label class="col-lg-4 control-label" style="margin-top: 20px" for="mountingHeight">Mounting Height (m)</label>
+                        <div class="col-lg-8"  style="margin-top: 10px">
+                            <input type="text" class="form-control" id="mountingHeight" placeholder="Mounting Height (m)">
                         </div>
                     </div>
                 </div>
@@ -232,30 +287,46 @@
             </div>
         </div>
     </div>
-    <div class="modal fade" id="default_cap_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal fade" id="update_equipment_model" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title_default_cap_modal" >Set Default Site Settings</h4>
+                    <h4 class="modal-title" id="myModalLabel">Add New Equipment</h4>
                 </div>
-                <div class="modal-body" style="overflow: auto">
-                    <div class="form-group">
-                        <label class="control-label" for="sinkCapacity">Default Customer Bandwidth</label>
-                        <div class="col-lg-10">
-                            <input type="number" class="form-control" id="sinkCapacity" value="5" placeholder="Default Customers Bandwidth">
-                        </div>
-                    </div>
-                    <div class="form-group" >
-                        <label for="mountingDefaultInput" class="control-label">Default Mounting Height</label>
-                        <div class="col-lg-10">
-                            <input type="number" class="form-control" id="mountingDefaultInput" value="10" placeholder="Default Mounting Height">
-                        </div>
-                    </div>
-
+                <div class="modal-body">
+                    <form class="form-horizontal newEquipmentForm">
+                        <fieldset>
+                            <div class="form-group">
+                                <label for="name" class="col-lg-2 control-label">Name</label>
+                                <div class="col-lg-10">
+                                    <input class="form-control" required="required" id="name" placeholder="Name goes here..." type="text">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="Throughput" class="col-lg-2 control-label">Throughput</label>
+                                <div class="col-lg-10">
+                                    <input class="form-control" required="required" type="number" id="Throughput" placeholder="Throughput goes here..." >
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="Range" class="col-lg-2 control-label">Range</label>
+                                <div class="col-lg-10">
+                                    <input class="form-control" required="required" id="Range" placeholder="Range goes here..." type="number">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="Cost" class="col-lg-2 control-label">Cost</label>
+                                <div class="col-lg-10">
+                                    <input class="form-control" required="required" id="Cost" placeholder="Cost goes here..." type="number">
+                                </div>
+                            </div>
+                        </fieldset>
+                    </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary set_default">SET</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary add_equipment_button">Add</button>
                 </div>
             </div>
         </div>
@@ -279,6 +350,68 @@
         </div>
     </div>
 
+    <div class="modal fade" id="associate_device_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title-device-sel">Associate Device With This Link</h4>
+                </div>
+                <div class="modal-body" style="overflow: auto">
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label" style="margin-top: 10px">Select Device</label>
+                        <div class="col-lg-8">
+                            <input  type="hidden"/>
+                            <input type="hidden">
+                            <select class="form-control" id="associated_device_select"></select>
+                        </div>
+                    </div>
+                    <br/><br/>
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label" style="margin-top: 10px">Throughput</label>
+                        <div class="col-lg-8">
+                            <input type="text" disabled="disabled" class="form-control" id="sel_device_throughput" />
+                        </div>
+                    </div>
+                    <br/><br/>
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label" style="margin-top: 10px">Range</label>
+                        <div class="col-lg-8">
+                            <input type="text" disabled="disabled" class="form-control" id="sel_device_range" />
+                        </div>
+                    </div>
+                    <br/><br/>
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label" style="margin-top: 10px">Cost</label>
+                        <div class="col-lg-8">
+                            <input type="text" disabled="disabled" class="form-control" id="sel_device_cost" />
+                        </div>
+                    </div>
+                    <section id="output_sel_dev_section" class="hide">
+                        <br/><br/>
+                        <div class="form-group">
+                            <label class="col-lg-4 control-label" style="margin-top: 10px">Passed Flow</label>
+                            <div class="col-lg-8">
+                                <input type="text" disabled="disabled" class="form-control" id="sel_device_passed_flow" />
+                            </div>
+                        </div>
+                        <br/><br/>
+                        <div class="form-group">
+                            <label class="col-lg-4 control-label" style="margin-top: 10px">Edge Length</label>
+                            <div class="col-lg-8">
+                                <input type="text" disabled="disabled" class="form-control" id="sel_device_edge_length" />
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary associate_device_btn">Associate</button>
+                    <button type="button" class="btn btn-danger re_associate_device_btn">Remove</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="text/javascript" src="/static/js/jquery-2.2.3.min.js" th:src="@{/js/jquery-3.3.1.min.js}" ></script>
     <script type="text/javascript" src="/static/js/jquery.cookie.js" th:src="@{/js/jquery.cookie.js}"></script>
     <script type="text/javascript" src="/static/js/bootstrap.min.js" th:src="@{/js/bootstrap.min.js}" ></script>
@@ -288,33 +421,25 @@
     <script type="text/javascript" src="/static/js/jsnetworkx.js" th:src="@{/js/jsnetworkx.js}"></script>
     <script type="text/javascript" src="/static/js/Queue.js" th:src="@{/js/Queue.js}"></script>
     <script type="text/javascript" src="/static/js/html2canvas.min.js" th:src="@{/js/html2canvas.min.js}" ></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
     <script type="text/javascript" th:src="@{/js/zyxt.js}"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD6L42efE9u9F1aNgwkpnRhQ7CEzaAnF8Q&libraries=places&callback=initMap" async defer></script>
     <script type="text/javascript" th:inline="javascript">
         /*<![CDATA[*/
         $(".show_tip").tooltip();
-        var outputMessage = /*[[${result}]]*/"";
-        var finalResult = /*[[${output}]]*/"";
-        var defaultMountingHeight = /*[[${default_mounting_height}]]*/"";
-
-        // $.removeCookie("job_id");
-        //console.log($.cookie("job_id"));
-        // if($.cookie("job_id") === undefined){
-        //     console.log("Cookie Has Been Set");
-        //     let expire = new Date();
-        //     expire.setTime(expire.getTime() + (31556952000));
-        //     $.cookie("job_id", "", { expires: expire });
-        // }
-        //
+        let outputMessage = /*[[${result}]]*/"";
+        let finalResult = /*[[${output}]]*/"";
+        let defaultMountingHeight = /*[[${default_mounting_height}]]*/"";
+        let input = /*[[${input}]]*/"";
 
         window.onload = function(){
             if(finalResult !== null){
                 console.log(finalResult);
                 showOutput(finalResult, parseInt(defaultMountingHeight));
-                if(markerCounter > 0){
-                    $(".i_e_btn").css("margin-left", "100px");
-                }
+            }else{
+                showInput(input);
             }
+            map.setOptions({ draggableCursor : "pointer" });
         };
 
         if(outputMessage !== null && outputMessage !== "TRUE"){
@@ -355,14 +480,22 @@
             for(let e in allEdges){
                 let n1Prop = getNodePropertiesFromGraph(allEdges[e][0]); //finalResult[parseInt(allEdges[e][0])-1];
                 let n2Prop = getNodePropertiesFromGraph(allEdges[e][1]); // finalResult[parseInt(allEdges[e][1])-1];
-                finalEdges.push({lat1:n1Prop.lat, lng1:n1Prop.lng, lat2:n2Prop.lat, lng2:n2Prop.lng});
+                finalEdges.push({lat1:n1Prop.lat, lng1:n1Prop.lng, lat2:n2Prop.lat, lng2:n2Prop.lng, device: allEdges[e][2]['device']});
             }
 
-            $("#selected_equipments ul li input").each(function(){
+            $("#default_equipment_set li input[type=checkbox]").each(function(){
+                let selected = false;
                 if($(this).prop('checked')){
-                    finalEquipments.push(parseInt($(this).val()));
+                    selected = true;
                 }
-
+                finalEquipments.push({
+                    id: parseInt($(this).val()),
+                    name: $(this).prev().html(),
+                    throughput: parseFloat($(this).next().val()),
+                    range: parseFloat($(this).next().next().next().val()),
+                    cost: parseFloat($(this).next().next().next().next().val()),
+                    selected: selected
+                });
             });
             console.log("#############FINAL############")
             console.log(allEdges);
@@ -370,45 +503,56 @@
             console.log(finalResult);
             console.log(finalEdges);
             console.log(finalEquipments);
-            //return false;
-
-            var requestUrl = /*[[@{/submit_job}]]*/"url";
+            let reqAllJobsUrl = /*[[@{/get_all_jobs}]]*/"url";
+            let requestUrl = /*[[@{/submit_job}]]*/"url";
             $.post(requestUrl, {trade_off:$("#trade_of_slider").val(),mounting_height: $("#mountingDefaultInput").val(), data: JSON.stringify(finalResult), data_edges: JSON.stringify(finalEdges), data_equipments: JSON.stringify(finalEquipments)}, function(response){
                 console.log(response);
                 var obj = jQuery.parseJSON( response );
                 var html = "";
                 if(obj.status){
-                    html = "<p>Your job has been submitted successfully. Your Job id is: <b class='badge'>"+obj.job_id+"</b></p>";
+                    html = "<p>You have successfully submitted JobId: <b class='badge'>"+obj.job_id+"</b></p>";
                 }else{
                     html = "<b class='text-danger'>"+obj.errorMessage+"</b>"
                 }
                 $("#output").html(html);
+                $.post(reqAllJobsUrl, function(response){
+                    $("#old_jobs span").html(response);
+                    initDeleteJobBtn();
+                    initCancelJobBtn();
+                });
             });
         });
-        let homeUrl = /*[[@{/?job_id=}]]*/"url";
-        let cookieJson = /*[[${all_jobs}]]*/"";
-        if(cookieJson !== "" && cookieJson !== "[]"){
-            $("#old_jobs").removeClass("hide");
-            var allCookies = jQuery.parseJSON(cookieJson);
-            var html = "<table class='table table-hover table-striped'><tr><th class='text-center'>Job ID</th><th class='text-center'>Time</th><th class='text-center'><i class='glyphicon glyphicon-flash'></i></th></tr>";
-            for(var i = 0; i < allCookies.length; i++){
-                var requestUrl = homeUrl + allCookies[i].job_id;
-                html += "<tr class='"+allCookies[i].status+"' id='"+allCookies[i].job_id+"'><td class='text-center'><a href='"+requestUrl+"'><b>"+allCookies[i].job_id+"</b></a> </td><td class='text-center'>"+allCookies[i].time+"</td><td class='text-center'><a href='javascript:void(0)' class='"+allCookies[i].action+"'>"+allCookies[i].action+"</a></td></tr>";
-            }
-            html += "</table>";
-            $("#old_jobs span").html(html);
+        let reqAllJobsUrl = /*[[@{/get_all_jobs}]]*/"url";
+        $.post(reqAllJobsUrl, function(response){
+            $("#old_jobs span").html(response);
             initDeleteJobBtn();
             initCancelJobBtn();
-        }else{
-            $("#old_jobs").addClass("hide");
-        }
+        });
+        //
+        // let homeUrl = /*[[@{/?job_id=}]]*/"url";
+        // let cookieJson = /*[[${all_jobs}]]*/"";
+        // if(cookieJson !== "" && cookieJson !== "[]"){
+        //     $("#old_jobs").removeClass("hide");
+        //     var allCookies = jQuery.parseJSON(cookieJson);
+        //     var html = "<table class='table table-hover table-striped'><tr><th class='text-center'>Job ID</th><th class='text-center'>Time</th><th class='text-center'><i class='glyphicon glyphicon-flash'></i></th></tr>";
+        //     for(var i = 0; i < allCookies.length; i++){
+        //         var requestUrl = homeUrl + allCookies[i].job_id;
+        //         html += "<tr class='"+allCookies[i].status+"' id='"+allCookies[i].job_id+"'><td class='text-center'><a href='"+requestUrl+"'><b>"+allCookies[i].job_id+"</b></a> </td><td class='text-center'>"+allCookies[i].time+"</td><td class='text-center'><a href='javascript:void(0)' class='"+allCookies[i].action+"'>"+allCookies[i].action+"</a></td></tr>";
+        //     }
+        //     html += "</table>";
+        //     $("#old_jobs span").html(html);
+        //     initDeleteJobBtn();
+        //     initCancelJobBtn();
+        // }else{
+        //     $("#old_jobs").addClass("hide");
+        // }
 
         // $.cookie("job_id", "");
 
-        $(".clear_jobs").click(function(){
-            $("#old_jobs").addClass("hide");
-            $.cookie("job_id", "");
-        });
+        // $(".clear_jobs").click(function(){
+        //     $("#old_jobs").addClass("hide");
+        //     $.cookie("job_id", "");
+        // });
 
         // function deleteJobFromCookie(job_id){
         //     var allCookies = atob($.cookie("job_id")).split(",");

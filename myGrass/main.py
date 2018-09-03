@@ -13,7 +13,7 @@ def init(outputDir, tempDir, filenames):
     grass7path = r'C:\OSGeo4W\apps\grass\grass-7.2.svn'
     grass7bin_win = r'C:\OSGeo4W\bin\grass72svn.bat'
     # Linux
-    grass7bin_lin = 'grass72'
+    grass7bin_lin = 'grass74'
     # MacOSX
     grass7bin_mac = '/Applications/GRASS/GRASS-7.1.app/'
 
@@ -138,7 +138,7 @@ def initWithSpecifiedLocation(location):
     grass7path = r'C:\OSGeo4W\apps\grass\grass-7.2.svn'
     grass7bin_win = r'C:\OSGeo4W\bin\grass72svn.bat'
     # Linux
-    grass7bin_lin = 'grass72'
+    grass7bin_lin = 'grass74'
     # MacOSX
     grass7bin_mac = '/Applications/GRASS/GRASS-7.1.app/'
 
